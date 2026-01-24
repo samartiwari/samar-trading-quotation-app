@@ -74,11 +74,18 @@ jobs:
       - name: Commit updates.json to main branch
         shell: pwsh
         run: |
+          # Save the generated updates.json to temp location
+          $tempFile = "$env:TEMP\updates.json"
+          Copy-Item -Path updates.json -Destination $tempFile -Force
+          
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin main
           git checkout main
-          Copy-Item -Path updates.json -Destination updates.json -Force
+          
+          # Copy from temp to repo
+          Copy-Item -Path $tempFile -Destination updates.json -Force
+          
           git add updates.json
           git commit -m "chore: update updates.json for ${{ github.ref_name }}" || echo "No changes to commit"
           git push origin main
