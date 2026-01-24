@@ -16,7 +16,14 @@ jobs:
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.29.0'
           channel: 'stable'
+          cache: true
+
+      - name: Verify Flutter Installation
+        run: |
+          flutter --version
+          flutter doctor -v
 
       - name: Get dependencies
         run: flutter pub get
@@ -24,11 +31,23 @@ jobs:
       - name: Build Windows
         run: flutter build windows --release
 
+      - name: List Build Output
+        shell: pwsh
+        run: |
+          Write-Host "Listing build output directory..."
+          Get-ChildItem -Path build\windows -Recurse | Select-Object FullName
+
       - name: Package as ZIP
         shell: pwsh
         run: |
           # Grabs all files from the release folder and zips them
-          Compress-Archive -Path build\windows\x64\runner\release\* -DestinationPath Samar_Trading_Invoice.zip
+          $releasePath = "build\windows\x64\runner\Release"
+          if (Test-Path $releasePath) {
+            Compress-Archive -Path "$releasePath\*" -DestinationPath Samar_Trading_Invoice.zip
+          } else {
+            Write-Error "Release folder not found at $releasePath"
+            exit 1
+          }
 
       - name: Create Update JSON
         shell: pwsh
@@ -38,16 +57,30 @@ jobs:
           $json = @{
               version = "$VERSION"
               notes = "Latest updates for Samar Trading Quotation App"
-              pub_date = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ssZ")
+              pub_date = (Get-Date -Format "o")
               url = "https://github.com/samartiwari/samar-trading-quotation-app/releases/download/${{ github.ref_name }}/Samar_Trading_Invoice.zip"
           } | ConvertTo-Json
           $json | Out-File updates.json -Encoding utf8
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: |
             Samar_Trading_Invoice.zip
             updates.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit updates.json to main branch
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout main
+          Copy-Item -Path updates.json -Destination updates.json -Force
+          git add updates.json
+          git commit -m "chore: update updates.json for ${{ github.ref_name }}" || echo "No changes to commit"
+          git push origin main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

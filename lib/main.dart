@@ -10,7 +10,9 @@ void main() async {
 
   // Only run updater on Desktop (Windows/MacOS) - auto_updater doesn't support Linux
   if (!kIsWeb && (Platform.isWindows || Platform.isMacOS)) {
-    String feedURL = 'https://github.com/samartiwari/samar-trading-quotation-app/releases/latest/download/updates.json';
+    // Using GitHub Pages or raw GitHub content for the updates.json
+    // The CI/CD workflow uploads this to the latest release
+    String feedURL = 'https://raw.githubusercontent.com/samartiwari/samar-trading-quotation-app/main/updates.json';
 
     await autoUpdater.setFeedURL(feedURL);
     await autoUpdater.setScheduledCheckInterval(3600); // Check every hour
