@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:auto_updater/auto_updater.dart';
 import 'package:samar_trading_quotation/history_screen.dart';
 import 'package:samar_trading_quotation/quotation_creation_screen.dart';
 
@@ -85,6 +87,34 @@ class HomeScreen extends StatelessWidget {
             ],
           ),
         ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          // Check if platform supports auto_updater (Windows/macOS only)
+          if (Platform.isWindows || Platform.isMacOS) {
+            // 1. Give visual feedback so user knows the click worked
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Checking for updates..."),
+                duration: Duration(seconds: 2),
+              ),
+            );
+
+            // 2. Check for updates from GitHub
+            await autoUpdater.checkForUpdates();
+          } else {
+            // Linux or other platforms
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Auto-update is not available on this platform. Please check GitHub for updates."),
+                duration: Duration(seconds: 3),
+              ),
+            );
+          }
+        },
+        icon: const Icon(Icons.system_update),
+        label: const Text("Check for Updates"),
+        backgroundColor: const Color(0xff6F8F72),
       ),
     );
   }

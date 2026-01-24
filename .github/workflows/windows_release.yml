@@ -1,0 +1,53 @@
+name: Build & Release Windows
+on:
+  push:
+    tags:
+      - 'v*' # Trigger only when you push a tag like v1.0.1
+
+permissions:
+  contents: write # Important: Allows GitHub to upload files to your release
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build Windows
+        run: flutter build windows --release
+
+      - name: Package as ZIP
+        shell: pwsh
+        run: |
+          # Grabs all files from the release folder and zips them
+          Compress-Archive -Path build\windows\x64\runner\release\* -DestinationPath Samar_Trading_Invoice.zip
+
+      - name: Create Update JSON
+        shell: pwsh
+        run: |
+          # This generates the file that auto_updater reads
+          $VERSION = "${{ github.ref_name }}".Replace('v', '')
+          $json = @{
+              version = "$VERSION"
+              notes = "Latest updates for Samar Trading Quotation App"
+              pub_date = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ssZ")
+              url = "https://github.com/samartiwari/samar-trading-quotation-app/releases/download/${{ github.ref_name }}/Samar_Trading_Invoice.zip"
+          } | ConvertTo-Json
+          $json | Out-File updates.json -Encoding utf8
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            Samar_Trading_Invoice.zip
+            updates.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
