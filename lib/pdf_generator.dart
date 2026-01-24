@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import 'package:pdf/pdf.dart';
@@ -87,6 +88,10 @@ class PdfGenerator {
     final validUntil = now.add(const Duration(days: 7));
     final quoteNumber = await _generateQuoteNumber();
 
+    // Load logo image from assets
+    final logoData = await rootBundle.load('assets/logo.png');
+    final logoImage = pw.MemoryImage(logoData.buffer.asUint8List());
+
     // Date formatting
     String formatDate(DateTime date) {
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -113,42 +118,26 @@ class PdfGenerator {
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      // Logo Placeholder + Company Name Row
-                      pw.Row(
-                        crossAxisAlignment: pw.CrossAxisAlignment.center,
-                        children: [
-                          // Logo Placeholder (Styled Box)
-                          pw.Container(
-                            width: 50,
-                            height: 50,
-                            decoration: pw.BoxDecoration(
-                              color: primaryColor,
-                              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
-                            ),
-                            child: pw.Center(
-                              child: pw.Text(
-                                'ST',
-                                style: pw.TextStyle(
-                                  color: PdfColors.white,
-                                  fontSize: 22,
-                                  fontWeight: pw.FontWeight.bold,
-                                ),
+                      // We use a Stack so the Logo doesn't push the text down
+                      pw.SizedBox(
+                        height: 60, // This fixes the vertical space the logo "area" takes
+                        width: 300,
+                        child: pw.Stack(
+                          alignment: pw.Alignment.centerLeft,
+                          children: [
+                            pw.Positioned(
+                              left: 25, // Pulls the logo left to ignore the image's internal padding
+                              top: -30,  // Pulls the logo up to ignore the image's internal padding
+                              child: pw.Transform.scale(
+                                scale: 1.8, // This makes the logo larger without moving the text
+                                child: pw.Image(logoImage, width: 120, height: 120),
                               ),
                             ),
-                          ),
-                          pw.SizedBox(width: 12),
-                          pw.Text(
-                            companyName,
-                            style: pw.TextStyle(
-                              fontSize: 22,
-                              fontWeight: pw.FontWeight.bold,
-                              color: primaryColor,
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                      pw.SizedBox(height: 12),
-                      // Address & Contact
+
+                      // Address & Contact - These will now stay in place
                       pw.Text(
                         companyAddress,
                         style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700, lineSpacing: 3),
