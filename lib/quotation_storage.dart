@@ -159,6 +159,7 @@ class SavedChallan {
   final String id;
   final String customerName;
   final String customerAddress;
+  final String customerMobile;
   final String destination;
   final List<SavedChallanItem> items;
   final DateTime createdAt;
@@ -168,6 +169,7 @@ class SavedChallan {
     required this.id,
     required this.customerName,
     required this.customerAddress,
+    required this.customerMobile,
     required this.destination,
     required this.items,
     required this.createdAt,
@@ -178,6 +180,7 @@ class SavedChallan {
         'id': id,
         'customerName': customerName,
         'customerAddress': customerAddress,
+        'customerMobile': customerMobile,
         'destination': destination,
         'items': items.map((e) => e.toJson()).toList(),
         'createdAt': createdAt.toIso8601String(),
@@ -188,6 +191,7 @@ class SavedChallan {
         id: json['id'] as String,
         customerName: json['customerName'] as String,
         customerAddress: json['customerAddress'] as String,
+        customerMobile: (json['customerMobile'] as String?) ?? '',
         destination: json['destination'] as String,
         items: (json['items'] as List)
             .map((e) => SavedChallanItem.fromJson(e as Map<String, dynamic>))

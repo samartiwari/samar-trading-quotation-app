@@ -578,10 +578,11 @@ class PdfGenerator {
   static Future<String> saveChallanToDefaultFolder({
     required String name,
     required String address,
+    required String mobile,
     required String destination,
     required List<ChallanItem> items,
   }) async {
-    final pdf = await _generateChallanDocument(name, address, destination, items);
+    final pdf = await _generateChallanDocument(name, address, mobile, destination, items);
 
     final directory = await getApplicationDocumentsDirectory();
     final customPath = path.join(directory.path, 'Samar Trading Invoices');
@@ -604,6 +605,7 @@ class PdfGenerator {
   static Future<pw.Document> _generateChallanDocument(
     String customerName,
     String customerAddress,
+    String customerMobile,
     String destination,
     List<ChallanItem> items,
   ) async {
@@ -795,6 +797,15 @@ class PdfGenerator {
                             customerAddress,
                             style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey700),
                           ),
+                        if (customerMobile.isNotEmpty) ...[
+                          pw.SizedBox(height: 4),
+                          pw.Row(
+                            children: [
+                              pw.Text('Mobile: ', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.grey800)),
+                              pw.Text(customerMobile, style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),

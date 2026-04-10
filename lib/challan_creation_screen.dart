@@ -16,6 +16,7 @@ class ChallanCreationScreen extends StatefulWidget {
 class _ChallanCreationScreenState extends State<ChallanCreationScreen> {
   final _nameController = TextEditingController();
   final _addressController = TextEditingController();
+  final _mobileController = TextEditingController();
   final _destinationController = TextEditingController();
 
   String? _challanId;
@@ -37,6 +38,7 @@ class _ChallanCreationScreenState extends State<ChallanCreationScreen> {
     _challanId = challan.id;
     _nameController.text = challan.customerName;
     _addressController.text = challan.customerAddress;
+    _mobileController.text = challan.customerMobile;
     _destinationController.text = challan.destination;
 
     for (final savedItem in challan.items) {
@@ -73,6 +75,7 @@ class _ChallanCreationScreenState extends State<ChallanCreationScreen> {
   void dispose() {
     _nameController.dispose();
     _addressController.dispose();
+    _mobileController.dispose();
     _destinationController.dispose();
     for (final item in _items) {
       item.dispose();
@@ -92,9 +95,9 @@ class _ChallanCreationScreenState extends State<ChallanCreationScreen> {
         actions: [
           FilledButton.icon(
             onPressed: () async {
-              if (_items.isEmpty || _nameController.text.isEmpty) {
+              if (_items.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Fill in Name and Items first!")),
+                  const SnackBar(content: Text("Add at least one item first!")),
                 );
                 return;
               }
@@ -107,6 +110,7 @@ class _ChallanCreationScreenState extends State<ChallanCreationScreen> {
                 final filePath = await PdfGenerator.saveChallanToDefaultFolder(
                   name: _nameController.text,
                   address: _addressController.text,
+                  mobile: _mobileController.text,
                   destination: _destinationController.text,
                   items: _items,
                 );
@@ -115,6 +119,7 @@ class _ChallanCreationScreenState extends State<ChallanCreationScreen> {
                   id: _challanId ?? ChallanStorage.generateId(),
                   customerName: _nameController.text,
                   customerAddress: _addressController.text,
+                  customerMobile: _mobileController.text,
                   destination: _destinationController.text,
                   items: _items.map((item) => SavedChallanItem(
                     description: item.description.text,
@@ -208,7 +213,7 @@ class _ChallanCreationScreenState extends State<ChallanCreationScreen> {
                   child: TextField(
                     controller: _nameController,
                     decoration: const InputDecoration(
-                      labelText: "Customer Name",
+                      labelText: "Customer Name (Optional)",
                       border: OutlineInputBorder(),
                       prefixIcon: Icon(Icons.person),
                     ),
@@ -223,6 +228,19 @@ class _ChallanCreationScreenState extends State<ChallanCreationScreen> {
                       labelText: "Address (Optional)",
                       border: OutlineInputBorder(),
                       prefixIcon: Icon(Icons.location_on),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  flex: 1,
+                  child: TextField(
+                    controller: _mobileController,
+                    keyboardType: TextInputType.phone,
+                    decoration: const InputDecoration(
+                      labelText: "Mobile No.",
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.phone),
                     ),
                   ),
                 ),
