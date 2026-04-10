@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:auto_updater/auto_updater.dart';
 import 'package:samar_trading_quotation/history_screen.dart';
 import 'package:samar_trading_quotation/quotation_creation_screen.dart';
+import 'package:samar_trading_quotation/challan_creation_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -63,6 +64,20 @@ class HomeScreen extends StatelessWidget {
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (context) => const QuotationCreationScreen(),
+                        ),
+                      );
+                    },
+                  ),
+
+                  _DashboardCard(
+                    title: "New E-Challan",
+                    subtitle: "Create a delivery challan",
+                    icon: Icons.local_shipping_rounded,
+                    color: const Color(0xff5C6BC0), // Indigo
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const ChallanCreationScreen(),
                         ),
                       );
                     },

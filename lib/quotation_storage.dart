@@ -152,3 +152,139 @@ class QuotationStorage {
     return DateTime.now().millisecondsSinceEpoch.toString();
   }
 }
+
+// ============ CHALLAN MODELS & STORAGE ============
+
+class SavedChallan {
+  final String id;
+  final String customerName;
+  final String customerAddress;
+  final String destination;
+  final List<SavedChallanItem> items;
+  final DateTime createdAt;
+  final String? pdfPath;
+
+  SavedChallan({
+    required this.id,
+    required this.customerName,
+    required this.customerAddress,
+    required this.destination,
+    required this.items,
+    required this.createdAt,
+    this.pdfPath,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'customerName': customerName,
+        'customerAddress': customerAddress,
+        'destination': destination,
+        'items': items.map((e) => e.toJson()).toList(),
+        'createdAt': createdAt.toIso8601String(),
+        'pdfPath': pdfPath,
+      };
+
+  factory SavedChallan.fromJson(Map<String, dynamic> json) => SavedChallan(
+        id: json['id'] as String,
+        customerName: json['customerName'] as String,
+        customerAddress: json['customerAddress'] as String,
+        destination: json['destination'] as String,
+        items: (json['items'] as List)
+            .map((e) => SavedChallanItem.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        createdAt: DateTime.parse(json['createdAt'] as String),
+        pdfPath: json['pdfPath'] as String?,
+      );
+}
+
+class SavedChallanItem {
+  final String description;
+  final String hsnSac;
+  final String qty;
+  final String unit;
+  final String dimensions;
+
+  SavedChallanItem({
+    required this.description,
+    required this.hsnSac,
+    required this.qty,
+    required this.unit,
+    required this.dimensions,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'description': description,
+        'hsnSac': hsnSac,
+        'qty': qty,
+        'unit': unit,
+        'dimensions': dimensions,
+      };
+
+  factory SavedChallanItem.fromJson(Map<String, dynamic> json) =>
+      SavedChallanItem(
+        description: json['description'] as String,
+        hsnSac: json['hsnSac'] as String,
+        qty: json['qty'] as String,
+        unit: json['unit'] as String,
+        dimensions: json['dimensions'] as String,
+      );
+}
+
+class ChallanStorage {
+  static const String _storageKey = 'saved_challans';
+
+  static Future<void> saveChallan(SavedChallan challan) async {
+    final prefs = await SharedPreferences.getInstance();
+    final challans = await getAllChallans();
+
+    final existingIndex = challans.indexWhere((c) => c.id == challan.id);
+    if (existingIndex != -1) {
+      challans[existingIndex] = challan;
+    } else {
+      challans.insert(0, challan);
+    }
+
+    final jsonList = challans.map((c) => c.toJson()).toList();
+    await prefs.setString(_storageKey, jsonEncode(jsonList));
+  }
+
+  static Future<List<SavedChallan>> getAllChallans() async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonString = prefs.getString(_storageKey);
+
+    if (jsonString == null || jsonString.isEmpty) {
+      return [];
+    }
+
+    try {
+      final jsonList = jsonDecode(jsonString) as List;
+      return jsonList
+          .map((e) => SavedChallan.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  static Future<SavedChallan?> getChallanByPdfPath(String pdfPath) async {
+    final challans = await getAllChallans();
+    try {
+      return challans.firstWhere((c) => c.pdfPath == pdfPath);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  static Future<void> deleteChallan(String id) async {
+    final prefs = await SharedPreferences.getInstance();
+    final challans = await getAllChallans();
+    challans.removeWhere((c) => c.id == id);
+
+    final jsonList = challans.map((c) => c.toJson()).toList();
+    await prefs.setString(_storageKey, jsonEncode(jsonList));
+  }
+
+  static String generateId() {
+    return DateTime.now().millisecondsSinceEpoch.toString();
+  }
+}
