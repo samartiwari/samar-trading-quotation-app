@@ -4,6 +4,7 @@ import 'package:auto_updater/auto_updater.dart';
 import 'package:samar_trading_quotation/history_screen.dart';
 import 'package:samar_trading_quotation/quotation_creation_screen.dart';
 import 'package:samar_trading_quotation/challan_creation_screen.dart';
+import 'package:samar_trading_quotation/window_quotation_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -78,6 +79,20 @@ class HomeScreen extends StatelessWidget {
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (context) => const ChallanCreationScreen(),
+                        ),
+                      );
+                    },
+                  ),
+
+                  _DashboardCard(
+                    title: "Window Quotation",
+                    subtitle: "Length × Width pricing",
+                    icon: Icons.window_rounded,
+                    color: const Color(0xff8D6E63), // Brown — wood/window theme
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const WindowQuotationScreen(),
                         ),
                       );
                     },

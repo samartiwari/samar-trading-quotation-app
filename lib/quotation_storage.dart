@@ -292,3 +292,189 @@ class ChallanStorage {
     return DateTime.now().millisecondsSinceEpoch.toString();
   }
 }
+
+// ============ WINDOW QUOTATION MODELS & STORAGE ============
+
+class SavedWindowQuotation {
+  final String id;
+  final String customerName;
+  final String customerAddress;
+  final int gstPercentage;
+  final List<SavedWindowQuotationItem> items;
+  final DateTime createdAt;
+  final String? pdfPath;
+
+  SavedWindowQuotation({
+    required this.id,
+    required this.customerName,
+    required this.customerAddress,
+    required this.gstPercentage,
+    required this.items,
+    required this.createdAt,
+    this.pdfPath,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'customerName': customerName,
+        'customerAddress': customerAddress,
+        'gstPercentage': gstPercentage,
+        'items': items.map((e) => e.toJson()).toList(),
+        'createdAt': createdAt.toIso8601String(),
+        'pdfPath': pdfPath,
+      };
+
+  factory SavedWindowQuotation.fromJson(Map<String, dynamic> json) =>
+      SavedWindowQuotation(
+        id: json['id'] as String,
+        customerName: json['customerName'] as String,
+        customerAddress: json['customerAddress'] as String,
+        gstPercentage: json['gstPercentage'] as int,
+        items: (json['items'] as List)
+            .map((e) =>
+                SavedWindowQuotationItem.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        createdAt: DateTime.parse(json['createdAt'] as String),
+        pdfPath: json['pdfPath'] as String?,
+      );
+}
+
+class SavedWindowQuotationItem {
+  final String description;
+  final String lengthMm;
+  final String widthMm;
+  final double areaSqft;
+  final String qty;
+  final String rate;
+  final double amount;
+
+  // New fields — all optional for backward compatibility
+  final String windowSeries; // 'Fixed', 'Slider', 'Casement'
+  final String gi; // '0.8', '1', '1.2', '1.5'
+  final String glassType;
+  final String sashOuter;
+
+  // Slider-only
+  final String slidingType; // '2 Track', '3 Track'
+  final String handleType; // 'Touch Lock', etc.
+
+  // Casement-only
+  final String locking; // 'Single Point', 'Multi Point'
+  final String hinges; // '2D Hinges', '3D Hinges'
+
+  SavedWindowQuotationItem({
+    required this.description,
+    required this.lengthMm,
+    required this.widthMm,
+    required this.areaSqft,
+    required this.qty,
+    required this.rate,
+    required this.amount,
+    this.windowSeries = 'Fixed',
+    this.gi = '0.8',
+    this.glassType = '',
+    this.sashOuter = '',
+    this.slidingType = '',
+    this.handleType = '',
+    this.locking = '',
+    this.hinges = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'description': description,
+        'lengthMm': lengthMm,
+        'widthMm': widthMm,
+        'areaSqft': areaSqft,
+        'qty': qty,
+        'rate': rate,
+        'amount': amount,
+        'windowSeries': windowSeries,
+        'gi': gi,
+        'glassType': glassType,
+        'sashOuter': sashOuter,
+        'slidingType': slidingType,
+        'handleType': handleType,
+        'locking': locking,
+        'hinges': hinges,
+      };
+
+  factory SavedWindowQuotationItem.fromJson(Map<String, dynamic> json) =>
+      SavedWindowQuotationItem(
+        description: json['description'] as String,
+        lengthMm: json['lengthMm'] as String,
+        widthMm: json['widthMm'] as String,
+        areaSqft: (json['areaSqft'] as num).toDouble(),
+        qty: json['qty'] as String,
+        rate: json['rate'] as String,
+        amount: (json['amount'] as num).toDouble(),
+        windowSeries: (json['windowSeries'] as String?) ?? 'Fixed',
+        gi: (json['gi'] as String?) ?? '0.8',
+        glassType: (json['glassType'] as String?) ?? '',
+        sashOuter: (json['sashOuter'] as String?) ?? '',
+        slidingType: (json['slidingType'] as String?) ?? '',
+        handleType: (json['handleType'] as String?) ?? '',
+        locking: (json['locking'] as String?) ?? '',
+        hinges: (json['hinges'] as String?) ?? '',
+      );
+}
+
+class WindowQuotationStorage {
+  static const String _storageKey = 'saved_window_quotations';
+
+  static Future<void> saveQuotation(SavedWindowQuotation quotation) async {
+    final prefs = await SharedPreferences.getInstance();
+    final quotations = await getAllQuotations();
+
+    final existingIndex = quotations.indexWhere((q) => q.id == quotation.id);
+    if (existingIndex != -1) {
+      quotations[existingIndex] = quotation;
+    } else {
+      quotations.insert(0, quotation);
+    }
+
+    final jsonList = quotations.map((q) => q.toJson()).toList();
+    await prefs.setString(_storageKey, jsonEncode(jsonList));
+  }
+
+  static Future<List<SavedWindowQuotation>> getAllQuotations() async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonString = prefs.getString(_storageKey);
+
+    if (jsonString == null || jsonString.isEmpty) {
+      return [];
+    }
+
+    try {
+      final jsonList = jsonDecode(jsonString) as List;
+      return jsonList
+          .map((e) =>
+              SavedWindowQuotation.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  static Future<SavedWindowQuotation?> getQuotationByPdfPath(
+      String pdfPath) async {
+    final quotations = await getAllQuotations();
+    try {
+      return quotations.firstWhere((q) => q.pdfPath == pdfPath);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  static Future<void> deleteQuotation(String id) async {
+    final prefs = await SharedPreferences.getInstance();
+    final quotations = await getAllQuotations();
+    quotations.removeWhere((q) => q.id == id);
+
+    final jsonList = quotations.map((q) => q.toJson()).toList();
+    await prefs.setString(_storageKey, jsonEncode(jsonList));
+  }
+
+  static String generateId() {
+    return DateTime.now().millisecondsSinceEpoch.toString();
+  }
+}

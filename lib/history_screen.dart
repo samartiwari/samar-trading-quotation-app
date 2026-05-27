@@ -6,6 +6,7 @@ import 'package:path/path.dart' as path;
 import 'package:share_plus/share_plus.dart';
 import 'package:samar_trading_quotation/quotation_storage.dart';
 import 'package:samar_trading_quotation/quotation_creation_screen.dart';
+import 'package:samar_trading_quotation/window_quotation_screen.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -126,7 +127,36 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Future<void> _editQuotation(FileSystemEntity file) async {
-    // Try to find the quotation data by PDF path
+    final fileName = path.basename(file.path);
+
+    // Check if this is a window quotation (WQ_ prefix)
+    if (fileName.startsWith('WQ_')) {
+      final savedWQ = await WindowQuotationStorage.getQuotationByPdfPath(file.path);
+      if (savedWQ != null) {
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => WindowQuotationScreen(
+                editQuotation: savedWQ,
+              ),
+            ),
+          ).then((_) => _loadPdfFiles());
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Window quotation data not found. This may be an older quotation.'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+      return;
+    }
+
+    // Regular quotation
     final savedQuotation = await QuotationStorage.getQuotationByPdfPath(file.path);
     
     if (savedQuotation != null) {
