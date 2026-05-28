@@ -349,7 +349,7 @@ class SavedWindowQuotationItem {
   final double amount;
 
   // New fields — all optional for backward compatibility
-  final String windowSeries; // 'Fixed', 'Slider', 'Casement'
+  final String windowSeries; // 'Fixed', 'Slider', 'Casement', 'Ventilator'
   final String gi; // '0.8', '1', '1.2', '1.5'
   final String glassType;
   final String sashOuter;

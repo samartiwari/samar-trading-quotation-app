@@ -415,6 +415,8 @@ class _WindowQuotationScreenState extends State<WindowQuotationScreen> {
                     ),
                     items: const [
                       DropdownMenuItem(value: 18, child: Text("18%")),
+                      DropdownMenuItem(value: 9, child: Text("9%")),
+                      DropdownMenuItem(value: 5, child: Text("5%")),
                       DropdownMenuItem(value: 0, child: Text("0%")),
                     ],
                     onChanged: (val) {
@@ -584,6 +586,9 @@ class _WindowQuotationScreenState extends State<WindowQuotationScreen> {
         break;
       case 'Casement':
         seriesColor = Colors.teal;
+        break;
+      case 'Ventilator':
+        seriesColor = Colors.green;
         break;
       default:
         seriesColor = const Color(0xff8D6E63);
@@ -787,7 +792,7 @@ class WindowQuotationItem {
   final TextEditingController sashOuter = TextEditingController();
 
   // New dropdown values
-  String windowSeries = 'Fixed'; // Fixed, Slider, Casement
+  String windowSeries = 'Fixed'; // Fixed, Slider, Casement, Ventilator
   String gi = '0.8'; // 0.8, 1, 1.2, 1.5
 
   // Slider-only
@@ -1166,7 +1171,7 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.category),
                       ),
-                      items: ['Fixed', 'Slider', 'Casement']
+                      items: ['Fixed', 'Slider', 'Casement', 'Ventilator']
                           .map((e) => DropdownMenuItem(
                               value: e, child: Text(e)))
                           .toList(),

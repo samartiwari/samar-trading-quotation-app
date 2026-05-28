@@ -268,6 +268,8 @@ class _QuotationCreationScreenState extends State<QuotationCreationScreen> {
                     ),
                     items: const [
                       DropdownMenuItem(value: 18, child: Text("18%")),
+                      DropdownMenuItem(value: 9, child: Text("9%")),
+                      DropdownMenuItem(value: 5, child: Text("5%")),
                       DropdownMenuItem(value: 0, child: Text("0%")),
                     ],
                     onChanged: (val) {

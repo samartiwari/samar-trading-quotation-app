@@ -217,16 +217,31 @@ class PdfGenerator {
             decoration: const pw.BoxDecoration(
               border: pw.Border(top: pw.BorderSide(color: PdfColors.grey300, width: 1)),
             ),
-            child: pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            child: pw.Column(
               children: [
-                pw.Text(
-                  '$companyName | Phone: $companyPhone',
-                  style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(
+                      '$companyName | Phone: $companyPhone',
+                      style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500),
+                    ),
+                    pw.Text(
+                      'Page ${context.pageNumber} of ${context.pagesCount}',
+                      style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500),
+                    ),
+                  ],
                 ),
-                pw.Text(
-                  'Page ${context.pageNumber} of ${context.pagesCount}',
-                  style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500),
+                pw.SizedBox(height: 4),
+                pw.Center(
+                  child: pw.Text(
+                    'Software powered by Samar Trading',
+                    style: pw.TextStyle(
+                      fontSize: 7,
+                      color: PdfColors.grey400,
+                      fontStyle: pw.FontStyle.italic,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -519,6 +534,52 @@ class PdfGenerator {
       padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       child: child,
     );
+  }
+
+  // Window-type symbols drawn as matching teal vector SVGs (crisp at any
+  // size). All share a double-line frame + light-blue glass; each type adds
+  // its own marking:
+  //   Fixed      - plain glass
+  //   Slider     - center mullion + dashed horizontal slide arrow
+  //   Casement   - single dashed triangle, vertex left-middle (hinge right)
+  //   Ventilator - circular opening cut in the center
+  static pw.Widget _windowDrawing(String series) {
+    const stroke = '#1a8a7a';
+    const glass = '#dcebf2';
+    // Shared double frame + glass pane.
+    const frame = '''
+  <rect x="4" y="2" width="92" height="96" fill="none" stroke="$stroke" stroke-width="1.6"/>
+  <rect x="11" y="9" width="78" height="82" fill="$glass" stroke="$stroke" stroke-width="1.6"/>''';
+
+    String marking;
+    switch (series) {
+      case 'Slider':
+        marking = '''
+  <line x1="50" y1="9" x2="50" y2="91" stroke="$stroke" stroke-width="1.4"/>
+  <line x1="22" y1="50" x2="78" y2="50" stroke="$stroke" stroke-width="1.2" stroke-dasharray="4 3"/>
+  <polyline points="72,46 78,50 72,54" fill="none" stroke="$stroke" stroke-width="1.2"/>
+  <polyline points="28,46 22,50 28,54" fill="none" stroke="$stroke" stroke-width="1.2"/>''';
+        break;
+      case 'Casement':
+        marking = '''
+  <line x1="11" y1="50" x2="89" y2="9" stroke="$stroke" stroke-width="1.4" stroke-dasharray="4 3"/>
+  <line x1="11" y1="50" x2="89" y2="91" stroke="$stroke" stroke-width="1.4" stroke-dasharray="4 3"/>''';
+        break;
+      case 'Ventilator':
+        marking = '''
+  <circle cx="50" cy="50" r="22" fill="none" stroke="$stroke" stroke-width="1.6"/>''';
+        break;
+      default: // Fixed
+        marking = '';
+    }
+
+    final svg = '''
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+$frame
+$marking
+</svg>
+''';
+    return pw.SvgImage(svg: svg, width: 70, height: 70);
   }
 
   static pw.Widget _descRow(String key, String value) {
@@ -834,16 +895,31 @@ class PdfGenerator {
             decoration: const pw.BoxDecoration(
               border: pw.Border(top: pw.BorderSide(color: PdfColors.grey300, width: 1)),
             ),
-            child: pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            child: pw.Column(
               children: [
-                pw.Text(
-                  '$companyName | Phone: $companyPhone',
-                  style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(
+                      '$companyName | Phone: $companyPhone',
+                      style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500),
+                    ),
+                    pw.Text(
+                      'Page ${context.pageNumber} of ${context.pagesCount}',
+                      style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500),
+                    ),
+                  ],
                 ),
-                pw.Text(
-                  'Page ${context.pageNumber} of ${context.pagesCount}',
-                  style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500),
+                pw.SizedBox(height: 4),
+                pw.Center(
+                  child: pw.Text(
+                    'Software powered by Samar Trading',
+                    style: pw.TextStyle(
+                      fontSize: 7,
+                      color: PdfColors.grey400,
+                      fontStyle: pw.FontStyle.italic,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -1159,16 +1235,6 @@ class PdfGenerator {
     final logoData = await rootBundle.load('assets/logo.png');
     final logoImage = pw.MemoryImage(logoData.buffer.asUint8List());
 
-    // Load window drawings from assets
-    final fixedData = await rootBundle.load('assets/fixed_window.png');
-    final fixedImage = pw.MemoryImage(fixedData.buffer.asUint8List());
-
-    final sliderData = await rootBundle.load('assets/slider_window.png');
-    final sliderImage = pw.MemoryImage(sliderData.buffer.asUint8List());
-
-    final casementData = await rootBundle.load('assets/casement_window.png');
-    final casementImage = pw.MemoryImage(casementData.buffer.asUint8List());
-
     // Date formatting
     String formatDate(DateTime date) {
       const months = [
@@ -1315,18 +1381,33 @@ class PdfGenerator {
                   top: pw.BorderSide(
                       color: PdfColors.grey300, width: 1)),
             ),
-            child: pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            child: pw.Column(
               children: [
-                pw.Text(
-                  '$companyName | Phone: $companyPhone',
-                  style: const pw.TextStyle(
-                      fontSize: 8, color: PdfColors.grey500),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(
+                      '$companyName | Phone: $companyPhone',
+                      style: const pw.TextStyle(
+                          fontSize: 8, color: PdfColors.grey500),
+                    ),
+                    pw.Text(
+                      'Page ${context.pageNumber} of ${context.pagesCount}',
+                      style: const pw.TextStyle(
+                          fontSize: 8, color: PdfColors.grey500),
+                    ),
+                  ],
                 ),
-                pw.Text(
-                  'Page ${context.pageNumber} of ${context.pagesCount}',
-                  style: const pw.TextStyle(
-                      fontSize: 8, color: PdfColors.grey500),
+                pw.SizedBox(height: 4),
+                pw.Center(
+                  child: pw.Text(
+                    'Software powered by Samar Trading',
+                    style: pw.TextStyle(
+                      fontSize: 7,
+                      color: PdfColors.grey400,
+                      fontStyle: pw.FontStyle.italic,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -1474,18 +1555,7 @@ class PdfGenerator {
                   final item = entry.value;
                   final isEven = index % 2 == 0;
 
-                  // Determine drawing image
-                  pw.MemoryImage windowImage;
-                  switch (item.windowSeries) {
-                    case 'Slider':
-                      windowImage = sliderImage;
-                      break;
-                    case 'Casement':
-                      windowImage = casementImage;
-                      break;
-                    default:
-                      windowImage = fixedImage;
-                  }
+                  final windowDrawing = _windowDrawing(item.windowSeries);
 
                   return pw.TableRow(
                     decoration: pw.BoxDecoration(
@@ -1505,7 +1575,7 @@ class PdfGenerator {
                               mainAxisAlignment: pw.MainAxisAlignment.center,
                               crossAxisAlignment: pw.CrossAxisAlignment.center,
                               children: [
-                                pw.Image(windowImage, width: 70, height: 70, fit: pw.BoxFit.contain),
+                                windowDrawing,
                                 pw.SizedBox(width: 4),
                                 pw.Column(
                                   mainAxisSize: pw.MainAxisSize.min,
