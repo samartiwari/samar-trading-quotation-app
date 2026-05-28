@@ -13,6 +13,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Verify pubspec.yaml version matches tag
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}".TrimStart('v')
+          $line = Select-String -Path pubspec.yaml -Pattern '^version:\s*(\S+)' | Select-Object -First 1
+          $pubspecVersion = ($line.Matches[0].Groups[1].Value -split '\+')[0]
+          Write-Host "Tag version:     $tag"
+          Write-Host "pubspec version: $pubspecVersion"
+          if ($pubspecVersion -ne $tag) {
+            Write-Error "pubspec.yaml version ($pubspecVersion) does not match tag ($tag). Bump pubspec.yaml before tagging."
+            exit 1
+          }
+
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
