@@ -7,6 +7,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'quotation_creation_screen.dart';
 import 'challan_creation_screen.dart';
+import 'window_designs.dart';
 import 'window_quotation_screen.dart';
 
 class PdfGenerator {
@@ -536,49 +537,19 @@ class PdfGenerator {
     );
   }
 
-  // Window-type symbols drawn as matching teal vector SVGs (crisp at any
-  // size). All share a double-line frame + light-blue glass; each type adds
-  // its own marking:
-  //   Fixed      - plain glass
-  //   Slider     - center mullion + dashed horizontal slide arrow
-  //   Casement   - single dashed triangle, vertex left-middle (hinge right)
-  //   Ventilator - circular opening cut in the center
-  static pw.Widget _windowDrawing(String series) {
-    const stroke = '#1a8a7a';
-    const glass = '#dcebf2';
-    // Shared double frame + glass pane.
-    const frame = '''
-  <rect x="4" y="2" width="92" height="96" fill="none" stroke="$stroke" stroke-width="1.6"/>
-  <rect x="11" y="9" width="78" height="82" fill="$glass" stroke="$stroke" stroke-width="1.6"/>''';
-
-    String marking;
-    switch (series) {
-      case 'Slider':
-        marking = '''
-  <line x1="50" y1="9" x2="50" y2="91" stroke="$stroke" stroke-width="1.4"/>
-  <line x1="22" y1="50" x2="78" y2="50" stroke="$stroke" stroke-width="1.2" stroke-dasharray="4 3"/>
-  <polyline points="72,46 78,50 72,54" fill="none" stroke="$stroke" stroke-width="1.2"/>
-  <polyline points="28,46 22,50 28,54" fill="none" stroke="$stroke" stroke-width="1.2"/>''';
-        break;
-      case 'Casement':
-        marking = '''
-  <line x1="11" y1="50" x2="89" y2="9" stroke="$stroke" stroke-width="1.4" stroke-dasharray="4 3"/>
-  <line x1="11" y1="50" x2="89" y2="91" stroke="$stroke" stroke-width="1.4" stroke-dasharray="4 3"/>''';
-        break;
-      case 'Ventilator':
-        marking = '''
-  <circle cx="50" cy="50" r="22" fill="none" stroke="$stroke" stroke-width="1.6"/>''';
-        break;
-      default: // Fixed
-        marking = '';
-    }
-
-    final svg = '''
-<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-$frame
-$marking
-</svg>
-''';
+  /// Renders the window diagram for a given item: builds an SVG via the shared
+  /// builder using the catalog design, entered dimensions, and chosen frame
+  /// color. On-screen picker uses the same builder, so the PDF matches.
+  static pw.Widget _windowDrawing(WindowQuotationItem item) {
+    final design = designById(item.designId);
+    final widthMm = double.tryParse(item.widthMm.text) ?? 0;
+    final lengthMm = double.tryParse(item.lengthMm.text) ?? 0;
+    final svg = buildWindowSvg(
+      design: design,
+      widthMm: widthMm,
+      lengthMm: lengthMm,
+      frameColorKey: item.frameColor,
+    );
     return pw.SvgImage(svg: svg, width: 70, height: 70);
   }
 
@@ -1555,7 +1526,7 @@ $marking
                   final item = entry.value;
                   final isEven = index % 2 == 0;
 
-                  final windowDrawing = _windowDrawing(item.windowSeries);
+                  final windowDrawing = _windowDrawing(item);
 
                   return pw.TableRow(
                     decoration: pw.BoxDecoration(
@@ -1612,6 +1583,11 @@ $marking
                             ),
                             pw.SizedBox(height: 4),
                             _descRow('System Series', item.windowSeries),
+                            _descRow('Design', designById(item.designId).label),
+                            _descRow(
+                                'Frame Color',
+                                item.frameColor[0].toUpperCase() +
+                                    item.frameColor.substring(1)),
                             _descRow('GI Thickness', '${item.gi} mm'),
                             if (item.glassType.text.isNotEmpty)
                               _descRow('Glass Type', item.glassType.text),

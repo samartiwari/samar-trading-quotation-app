@@ -349,7 +349,9 @@ class SavedWindowQuotationItem {
   final double amount;
 
   // New fields — all optional for backward compatibility
-  final String windowSeries; // 'Fixed', 'Slider', 'Casement', 'Ventilator'
+  final String windowSeries; // family label: 'Fixed', 'Slider', 'Casement', ...
+  final String designId; // catalog design key, e.g. 'fixed_3'
+  final String frameColor; // 'white' | 'brown' | 'grey' | 'black'
   final String gi; // '0.8', '1', '1.2', '1.5'
   final String glassType;
   final String sashOuter;
@@ -371,6 +373,8 @@ class SavedWindowQuotationItem {
     required this.rate,
     required this.amount,
     this.windowSeries = 'Fixed',
+    this.designId = 'fixed_1',
+    this.frameColor = 'white',
     this.gi = '0.8',
     this.glassType = '',
     this.sashOuter = '',
@@ -389,6 +393,8 @@ class SavedWindowQuotationItem {
         'rate': rate,
         'amount': amount,
         'windowSeries': windowSeries,
+        'designId': designId,
+        'frameColor': frameColor,
         'gi': gi,
         'glassType': glassType,
         'sashOuter': sashOuter,
@@ -408,6 +414,8 @@ class SavedWindowQuotationItem {
         rate: json['rate'] as String,
         amount: (json['amount'] as num).toDouble(),
         windowSeries: (json['windowSeries'] as String?) ?? 'Fixed',
+        designId: (json['designId'] as String?) ?? 'fixed_1',
+        frameColor: (json['frameColor'] as String?) ?? 'white',
         gi: (json['gi'] as String?) ?? '0.8',
         glassType: (json['glassType'] as String?) ?? '',
         sashOuter: (json['sashOuter'] as String?) ?? '',

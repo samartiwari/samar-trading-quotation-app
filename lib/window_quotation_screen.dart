@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:open_file/open_file.dart';
 import 'package:samar_trading_quotation/pdf_generator.dart';
 import 'package:samar_trading_quotation/quotation_storage.dart';
+import 'package:samar_trading_quotation/window_design_picker.dart';
+import 'package:samar_trading_quotation/window_designs.dart';
 
 class WindowQuotationScreen extends StatefulWidget {
   final SavedWindowQuotation? editQuotation;
@@ -61,6 +64,8 @@ class _WindowQuotationScreenState extends State<WindowQuotationScreen> {
         initialQty: savedItem.qty,
         initialRate: savedItem.rate,
         initialWindowSeries: savedItem.windowSeries,
+        initialDesignId: savedItem.designId,
+        initialFrameColor: savedItem.frameColor,
         initialGi: savedItem.gi,
         initialGlassType: savedItem.glassType,
         initialSashOuter: savedItem.sashOuter,
@@ -106,6 +111,8 @@ class _WindowQuotationScreenState extends State<WindowQuotationScreen> {
 
     // Dropdown initial values
     final initialSeries = existingItem?.windowSeries ?? 'Fixed';
+    final initialDesignId = existingItem?.designId ?? 'fixed_1';
+    final initialFrameColor = existingItem?.frameColor ?? 'white';
     final initialGi = existingItem?.gi ?? '0.8';
     final initialSlidingType = existingItem?.slidingType ?? '2 Track';
     final initialHandleType = existingItem?.handleType ?? 'Touch Lock';
@@ -125,6 +132,8 @@ class _WindowQuotationScreenState extends State<WindowQuotationScreen> {
           glassTypeCtrl: glassTypeCtrl,
           sashOuterCtrl: sashOuterCtrl,
           initialSeries: initialSeries,
+          initialDesignId: initialDesignId,
+          initialFrameColor: initialFrameColor,
           initialGi: initialGi,
           initialSlidingType: initialSlidingType,
           initialHandleType: initialHandleType,
@@ -143,6 +152,8 @@ class _WindowQuotationScreenState extends State<WindowQuotationScreen> {
                 existingItem.glassType.text = glassTypeCtrl.text;
                 existingItem.sashOuter.text = sashOuterCtrl.text;
                 existingItem.windowSeries = dialogState.windowSeries;
+                existingItem.designId = dialogState.designId;
+                existingItem.frameColor = dialogState.frameColor;
                 existingItem.gi = dialogState.gi;
                 existingItem.slidingType = dialogState.slidingType;
                 existingItem.handleType = dialogState.handleType;
@@ -161,6 +172,8 @@ class _WindowQuotationScreenState extends State<WindowQuotationScreen> {
                   initialGlassType: glassTypeCtrl.text,
                   initialSashOuter: sashOuterCtrl.text,
                   initialWindowSeries: dialogState.windowSeries,
+                  initialDesignId: dialogState.designId,
+                  initialFrameColor: dialogState.frameColor,
                   initialGi: dialogState.gi,
                   initialSlidingType: dialogState.slidingType,
                   initialHandleType: dialogState.handleType,
@@ -255,6 +268,8 @@ class _WindowQuotationScreenState extends State<WindowQuotationScreen> {
                             rate: item.rate.text,
                             amount: item.amount,
                             windowSeries: item.windowSeries,
+                            designId: item.designId,
+                            frameColor: item.frameColor,
                             gi: item.gi,
                             glassType: item.glassType.text,
                             sashOuter: item.sashOuter.text,
@@ -608,6 +623,21 @@ class _WindowQuotationScreenState extends State<WindowQuotationScreen> {
             ),
           ),
           const SizedBox(width: 8),
+          // Design thumbnail
+          SizedBox(
+            width: 44,
+            height: 44,
+            child: SvgPicture.string(
+              buildWindowSvg(
+                design: designById(item.designId),
+                widthMm: double.tryParse(item.widthMm.text) ?? 0,
+                lengthMm: double.tryParse(item.lengthMm.text) ?? 0,
+                frameColorKey: item.frameColor,
+              ),
+              fit: BoxFit.contain,
+            ),
+          ),
+          const SizedBox(width: 8),
           // Description + Series badge + Specs subtitle
           Expanded(
             flex: 3,
@@ -792,7 +822,9 @@ class WindowQuotationItem {
   final TextEditingController sashOuter = TextEditingController();
 
   // New dropdown values
-  String windowSeries = 'Fixed'; // Fixed, Slider, Casement, Ventilator
+  String windowSeries = 'Fixed'; // family label, derived from chosen design
+  String designId = 'fixed_1'; // catalog design key
+  String frameColor = 'white'; // 'white' | 'brown' | 'grey' | 'black'
   String gi = '0.8'; // 0.8, 1, 1.2, 1.5
 
   // Slider-only
@@ -819,6 +851,8 @@ class WindowQuotationItem {
     String? initialQty,
     String? initialRate,
     String? initialWindowSeries,
+    String? initialDesignId,
+    String? initialFrameColor,
     String? initialGi,
     String? initialGlassType,
     String? initialSashOuter,
@@ -839,6 +873,8 @@ class WindowQuotationItem {
     if (initialGlassType != null) glassType.text = initialGlassType;
     if (initialSashOuter != null) sashOuter.text = initialSashOuter;
     if (initialWindowSeries != null) windowSeries = initialWindowSeries;
+    if (initialDesignId != null) designId = initialDesignId;
+    if (initialFrameColor != null) frameColor = initialFrameColor;
     if (initialGi != null) gi = initialGi;
     if (initialSlidingType != null) slidingType = initialSlidingType;
     if (initialHandleType != null) handleType = initialHandleType;
@@ -893,6 +929,8 @@ class _DecimalTextInputFormatter extends TextInputFormatter {
 /// Carries dropdown values from the dialog back to the parent on save.
 class _DialogDropdownState {
   final String windowSeries;
+  final String designId;
+  final String frameColor;
   final String gi;
   final String slidingType;
   final String handleType;
@@ -901,6 +939,8 @@ class _DialogDropdownState {
 
   _DialogDropdownState({
     required this.windowSeries,
+    required this.designId,
+    required this.frameColor,
     required this.gi,
     required this.slidingType,
     required this.handleType,
@@ -922,6 +962,8 @@ class _WindowItemDialog extends StatefulWidget {
   final TextEditingController sashOuterCtrl;
 
   final String initialSeries;
+  final String initialDesignId;
+  final String initialFrameColor;
   final String initialGi;
   final String initialSlidingType;
   final String initialHandleType;
@@ -940,6 +982,8 @@ class _WindowItemDialog extends StatefulWidget {
     required this.glassTypeCtrl,
     required this.sashOuterCtrl,
     required this.initialSeries,
+    required this.initialDesignId,
+    required this.initialFrameColor,
     required this.initialGi,
     required this.initialSlidingType,
     required this.initialHandleType,
@@ -960,6 +1004,8 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
   double _amount = 0.0;
 
   late String _windowSeries;
+  late String _designId;
+  late String _frameColor;
   late String _gi;
   late String _slidingType;
   late String _handleType;
@@ -970,6 +1016,8 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
   void initState() {
     super.initState();
     _windowSeries = widget.initialSeries;
+    _designId = widget.initialDesignId;
+    _frameColor = widget.initialFrameColor;
     _gi = widget.initialGi;
     _slidingType = widget.initialSlidingType;
     _handleType = widget.initialHandleType;
@@ -1109,6 +1157,8 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
 
     widget.onSave(_DialogDropdownState(
       windowSeries: _windowSeries,
+      designId: _designId,
+      frameColor: _frameColor,
       gi: _gi,
       slidingType: _slidingType,
       handleType: _handleType,
@@ -1163,20 +1213,24 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ── Window Series ──
-                    DropdownButtonFormField<String>(
-                      value: _windowSeries,
-                      decoration: const InputDecoration(
-                        labelText: "Window Series",
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.category),
-                      ),
-                      items: ['Fixed', 'Slider', 'Casement', 'Ventilator']
-                          .map((e) => DropdownMenuItem(
-                              value: e, child: Text(e)))
-                          .toList(),
-                      onChanged: (val) =>
-                          setState(() => _windowSeries = val!),
+                    // ── Design picker tile ──
+                    _DesignPickerTile(
+                      designId: _designId,
+                      frameColor: _frameColor,
+                      onTap: () async {
+                        final result = await showWindowDesignPicker(
+                          context,
+                          initialDesignId: _designId,
+                          initialFrameColor: _frameColor,
+                        );
+                        if (result != null) {
+                          setState(() {
+                            _designId = result.designId;
+                            _frameColor = result.frameColor;
+                            _windowSeries = designById(result.designId).family;
+                          });
+                        }
+                      },
                     ),
                     const SizedBox(height: 20),
 
@@ -1496,6 +1550,59 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
         fontWeight: FontWeight.w600,
         color: Colors.grey.shade600,
         letterSpacing: 0.5,
+      ),
+    );
+  }
+}
+
+/// Tappable tile that shows the currently selected design (live SVG preview +
+/// label + chosen frame color) and opens the design picker on tap.
+class _DesignPickerTile extends StatelessWidget {
+  final String designId;
+  final String frameColor;
+  final VoidCallback onTap;
+  const _DesignPickerTile({
+    required this.designId,
+    required this.frameColor,
+    required this.onTap,
+  });
+  @override
+  Widget build(BuildContext context) {
+    final design = designById(designId);
+    final svg = buildWindowSvg(design: design, frameColorKey: frameColor);
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade400),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 64,
+              height: 64,
+              child: SvgPicture.string(svg, fit: BoxFit.contain),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(design.label,
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text('${design.family} • $frameColor frame',
+                      style: TextStyle(
+                          fontSize: 12, color: Colors.grey.shade700)),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: Colors.grey),
+          ],
+        ),
       ),
     );
   }
