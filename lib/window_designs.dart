@@ -217,6 +217,12 @@ const List<WindowDesign> kWindowDesigns = [
   WindowDesign(id: 'cmt_68', family: 'Casement', label: 'CMT 68', cols: 3, rows: 2, rowFractions: [0.78, 0.22]),
   WindowDesign(id: 'cmt_69', family: 'Casement', label: 'CMT 69', cols: 4, rows: 1),
   WindowDesign(id: 'cmt_70', family: 'Casement', label: 'CMT 70', cols: 3, rows: 1),
+
+  // Casement (Georgian Bar) family - same casement designs as above with a
+  // Georgian bar grid overlaid on the glass for a traditional/colonial look.
+  // The bars are decorative (don't divide the actual glass).
+  WindowDesign(id: 'cmt_2_gb', family: 'Casement (Georgian Bar)', label: 'CMT 2 GB', cols: 1, rows: 1),
+  WindowDesign(id: 'cmt_13_gb', family: 'Casement (Georgian Bar)', label: 'CMT 13 GB', cols: 2, rows: 1),
 ];
 
 /// Distinct families in catalog order (drives picker tabs).
