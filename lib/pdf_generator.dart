@@ -537,20 +537,108 @@ class PdfGenerator {
     );
   }
 
-  /// Renders the window diagram for a given item: builds an SVG via the shared
-  /// builder using the catalog design, entered dimensions, and chosen frame
-  /// color. On-screen picker uses the same builder, so the PDF matches.
+  /// Renders the diagram cell: drawing + dimension annotations (per-panel
+  /// widths under, per-row heights to the side) + total area below.
+  static pw.Widget _drawingCell(WindowQuotationItem item, pw.Widget drawing) {
+    final widths = item.columnWidthsMm;
+    final heights = item.rowHeightsMm;
+    final hasWidths = widths.isNotEmpty;
+    final hasHeights = heights.isNotEmpty;
+
+    // Now that the drawing column is wide and the diagram is large (130x130),
+    // labels can be bigger / more readable. Still shrink slightly for 4+
+    // panels so multi-segment lines stay on one row.
+    final widthFs = widths.length >= 4 ? 8.0 : 10.0;
+    final heightFs = heights.length >= 3 ? 9.0 : 11.0;
+    const tickFs = 8.0;
+
+    pw.Widget heightLabels;
+    if (hasHeights) {
+      heightLabels = pw.Column(
+        mainAxisSize: pw.MainAxisSize.min,
+        children: [
+          for (var i = 0; i < heights.length; i++) ...[
+            pw.Text('^', style: const pw.TextStyle(fontSize: tickFs)),
+            pw.Text('|', style: const pw.TextStyle(fontSize: tickFs)),
+            pw.Text(heights[i].toStringAsFixed(0),
+                style: pw.TextStyle(
+                    fontSize: heightFs, fontWeight: pw.FontWeight.bold)),
+            pw.Text('|', style: const pw.TextStyle(fontSize: tickFs)),
+            pw.Text('v', style: const pw.TextStyle(fontSize: tickFs)),
+          ],
+        ],
+      );
+    } else {
+      heightLabels = pw.Column(
+        mainAxisSize: pw.MainAxisSize.min,
+        children: [
+          pw.Text('^', style: const pw.TextStyle(fontSize: tickFs)),
+          pw.Text('|', style: const pw.TextStyle(fontSize: tickFs)),
+          pw.Text(item.lengthMm.text,
+              style: pw.TextStyle(
+                  fontSize: heightFs, fontWeight: pw.FontWeight.bold)),
+          pw.Text('|', style: const pw.TextStyle(fontSize: tickFs)),
+          pw.Text('v', style: const pw.TextStyle(fontSize: tickFs)),
+        ],
+      );
+    }
+
+    // Bottom horizontal width labels: one segment per column. Wraps to the
+    // next line if a row of labels doesn't fit, so values never get clipped.
+    pw.Widget widthLabels;
+    if (hasWidths) {
+      widthLabels = pw.Wrap(
+        alignment: pw.WrapAlignment.center,
+        crossAxisAlignment: pw.WrapCrossAlignment.center,
+        spacing: 4,
+        runSpacing: 2,
+        children: [
+          for (var i = 0; i < widths.length; i++)
+            pw.Text(
+              '<--${widths[i].toStringAsFixed(0)}-->',
+              style: pw.TextStyle(fontSize: widthFs),
+            ),
+        ],
+      );
+    } else {
+      widthLabels = pw.Text(
+          '<- - - - - - ${item.widthMm.text} - - - - - ->',
+          style: const pw.TextStyle(fontSize: 10));
+    }
+
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.center,
+      children: [
+        pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.center,
+          crossAxisAlignment: pw.CrossAxisAlignment.center,
+          children: [
+            drawing,
+            pw.SizedBox(width: 4),
+            // Reserve a fixed-width slot for the height label column so the
+            // big digits (e.g. "1840") never get clipped against the cell edge.
+            pw.SizedBox(width: 42, child: pw.Center(child: heightLabels)),
+          ],
+        ),
+        pw.SizedBox(height: 6),
+        widthLabels,
+        pw.SizedBox(height: 4),
+        pw.Text('${item.areaSqft.toStringAsFixed(2)} Sq.ft',
+            style: pw.TextStyle(
+                fontSize: 10, fontWeight: pw.FontWeight.bold)),
+      ],
+    );
+  }
+
+  /// Renders the window diagram for a given item: loads the catalog SVG
+  /// asset (already preloaded at app startup) and substitutes the chosen
+  /// frame color. The picture is the canonical catalog drawing; entered
+  /// dimensions are printed as text labels next to it, not reflected in the
+  /// picture.
   static pw.Widget _windowDrawing(WindowQuotationItem item) {
     final design = designById(item.designId);
-    final widthMm = double.tryParse(item.widthMm.text) ?? 0;
-    final lengthMm = double.tryParse(item.lengthMm.text) ?? 0;
-    final svg = buildWindowSvg(
-      design: design,
-      widthMm: widthMm,
-      lengthMm: lengthMm,
-      frameColorKey: item.frameColor,
-    );
-    return pw.SvgImage(svg: svg, width: 70, height: 70);
+    final svg = designSvgOrPlaceholder(design, frameColorKey: item.frameColor);
+    return pw.SvgImage(svg: svg, width: 110, height: 110);
   }
 
   static pw.Widget _descRow(String key, String value) {
@@ -1487,8 +1575,8 @@ class PdfGenerator {
               border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
               columnWidths: {
                 0: const pw.FlexColumnWidth(0.5),  // S.N
-                1: const pw.FlexColumnWidth(2.6),  // Drawing
-                2: const pw.FlexColumnWidth(4.5),  // Description
+                1: const pw.FlexColumnWidth(4.0),  // Drawing (large, gives room for diagram + labels)
+                2: const pw.FlexColumnWidth(3.5),  // Description
                 3: const pw.FlexColumnWidth(0.8),  // Qty
                 4: const pw.FlexColumnWidth(1.4),  // Rate
                 5: const pw.FlexColumnWidth(1.6),  // Amount
@@ -1537,36 +1625,8 @@ class PdfGenerator {
                       _tableCell((index + 1).toString(),
                           align: pw.TextAlign.center),
                       
-                      // Drawing Column (with arrows, length, width, area)
-                      _tableCellWidget(
-                        pw.Column(
-                          crossAxisAlignment: pw.CrossAxisAlignment.center,
-                          children: [
-                            pw.Row(
-                              mainAxisAlignment: pw.MainAxisAlignment.center,
-                              crossAxisAlignment: pw.CrossAxisAlignment.center,
-                              children: [
-                                windowDrawing,
-                                pw.SizedBox(width: 4),
-                                pw.Column(
-                                  mainAxisSize: pw.MainAxisSize.min,
-                                  children: [
-                                    pw.Text('^', style: const pw.TextStyle(fontSize: 6)),
-                                    pw.Text('|', style: const pw.TextStyle(fontSize: 6)),
-                                    pw.Text(item.lengthMm.text, style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
-                                    pw.Text('|', style: const pw.TextStyle(fontSize: 6)),
-                                    pw.Text('v', style: const pw.TextStyle(fontSize: 6)),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            pw.SizedBox(height: 4),
-                            pw.Text('<- - - - - - ${item.widthMm.text} - - - - - ->', style: const pw.TextStyle(fontSize: 7)),
-                            pw.SizedBox(height: 2),
-                            pw.Text('${item.areaSqft.toStringAsFixed(2)} Sq.ft', style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold)),
-                          ],
-                        ),
-                      ),
+                      // Drawing Column (with per-panel arrows + area)
+                      _tableCellWidget(_drawingCell(item, windowDrawing)),
 
                       // Description Column (with aligned details)
                       _tableCellWidget(
@@ -1593,13 +1653,9 @@ class PdfGenerator {
                               _descRow('Glass Type', item.glassType.text),
                             if (item.sashOuter.text.isNotEmpty)
                               _descRow('Sash / Outer', item.sashOuter.text),
-                            if (item.windowSeries == 'Slider') ...[
-                              _descRow('Sliding Type', item.slidingType),
-                              _descRow('Handle Type', item.handleType),
-                            ],
                             if (item.windowSeries == 'Casement') ...[
-                              _descRow('Locking Type', item.locking),
-                              _descRow('Hinge Type', item.hinges),
+                              _descRow('Locking', item.locking),
+                              _descRow('Hinges', item.hinges),
                             ],
                           ],
                         ),

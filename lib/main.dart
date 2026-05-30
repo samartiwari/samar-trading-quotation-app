@@ -3,10 +3,15 @@ import 'dart:io';
 import 'package:auto_updater/auto_updater.dart';
 import 'package:flutter/material.dart';
 import 'package:samar_trading_quotation/home_screen.dart';
+import 'package:samar_trading_quotation/window_designs.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Preload window-design SVG assets so widgets can render them
+  // synchronously from cache.
+  await preloadDesignSvgs();
 
   // Only run updater on Desktop (Windows/MacOS) - auto_updater doesn't support Linux
   if (!kIsWeb && (Platform.isWindows || Platform.isMacOS)) {

@@ -218,7 +218,7 @@ class _DesignGrid extends StatelessWidget {
       itemCount: designs.length,
       itemBuilder: (_, i) {
         final d = designs[i];
-        final svg = buildWindowSvg(design: d, frameColorKey: frameColor);
+        final svg = designSvgOrPlaceholder(d, frameColorKey: frameColor);
         return InkWell(
           onTap: () => onPick(d.id),
           child: Container(

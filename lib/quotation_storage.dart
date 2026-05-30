@@ -360,9 +360,23 @@ class SavedWindowQuotationItem {
   final String slidingType; // '2 Track', '3 Track'
   final String handleType; // 'Touch Lock', etc.
 
-  // Casement-only
+  // Casement-only (item-level legacy; per-panel overrides live in panelOptions)
   final String locking; // 'Single Point', 'Multi Point'
   final String hinges; // '2D Hinges', '3D Hinges'
+
+  /// Per-column widths in mm, one entry per design column. Empty list = use
+  /// legacy widthMm as the single column. (Round 2: source of truth for the
+  /// PDF diagram + area math.)
+  final List<double> columnWidthsMm;
+
+  /// Per-row heights in mm, one entry per design row. Empty list = use
+  /// legacy lengthMm as the single row.
+  final List<double> rowHeightsMm;
+
+  /// Per-panel options, row-major flat list of maps (length = rows*cols).
+  /// Each map holds type-specific keys like 'hinges' / 'locking' / 'handle'.
+  /// Empty list = no per-panel options recorded.
+  final List<Map<String, String>> panelOptions;
 
   SavedWindowQuotationItem({
     required this.description,
@@ -382,6 +396,9 @@ class SavedWindowQuotationItem {
     this.handleType = '',
     this.locking = '',
     this.hinges = '',
+    this.columnWidthsMm = const [],
+    this.rowHeightsMm = const [],
+    this.panelOptions = const [],
   });
 
   Map<String, dynamic> toJson() => {
@@ -402,6 +419,9 @@ class SavedWindowQuotationItem {
         'handleType': handleType,
         'locking': locking,
         'hinges': hinges,
+        'columnWidthsMm': columnWidthsMm,
+        'rowHeightsMm': rowHeightsMm,
+        'panelOptions': panelOptions,
       };
 
   factory SavedWindowQuotationItem.fromJson(Map<String, dynamic> json) =>
@@ -423,6 +443,19 @@ class SavedWindowQuotationItem {
         handleType: (json['handleType'] as String?) ?? '',
         locking: (json['locking'] as String?) ?? '',
         hinges: (json['hinges'] as String?) ?? '',
+        columnWidthsMm: (json['columnWidthsMm'] as List?)
+                ?.map((e) => (e as num).toDouble())
+                .toList() ??
+            const [],
+        rowHeightsMm: (json['rowHeightsMm'] as List?)
+                ?.map((e) => (e as num).toDouble())
+                .toList() ??
+            const [],
+        panelOptions: (json['panelOptions'] as List?)
+                ?.map((e) =>
+                    Map<String, String>.from(e as Map<dynamic, dynamic>))
+                .toList() ??
+            const [],
       );
 }
 

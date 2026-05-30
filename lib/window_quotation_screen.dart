@@ -66,6 +66,9 @@ class _WindowQuotationScreenState extends State<WindowQuotationScreen> {
         initialWindowSeries: savedItem.windowSeries,
         initialDesignId: savedItem.designId,
         initialFrameColor: savedItem.frameColor,
+        initialColumnWidthsMm: savedItem.columnWidthsMm,
+        initialRowHeightsMm: savedItem.rowHeightsMm,
+        initialPanelOptions: savedItem.panelOptions,
         initialGi: savedItem.gi,
         initialGlassType: savedItem.glassType,
         initialSashOuter: savedItem.sashOuter,
@@ -139,6 +142,9 @@ class _WindowQuotationScreenState extends State<WindowQuotationScreen> {
           initialHandleType: initialHandleType,
           initialLocking: initialLocking,
           initialHinges: initialHinges,
+          initialColumnWidthsMm: existingItem?.columnWidthsMm ?? const [],
+          initialRowHeightsMm: existingItem?.rowHeightsMm ?? const [],
+          initialPanelOptions: existingItem?.panelOptions ?? const [],
           onSave: (dialogState) {
             setState(() {
               final autoDescription = "${dialogState.windowSeries} Window";
@@ -154,6 +160,9 @@ class _WindowQuotationScreenState extends State<WindowQuotationScreen> {
                 existingItem.windowSeries = dialogState.windowSeries;
                 existingItem.designId = dialogState.designId;
                 existingItem.frameColor = dialogState.frameColor;
+                existingItem.columnWidthsMm = dialogState.columnWidthsMm;
+                existingItem.rowHeightsMm = dialogState.rowHeightsMm;
+                existingItem.panelOptions = dialogState.panelOptions;
                 existingItem.gi = dialogState.gi;
                 existingItem.slidingType = dialogState.slidingType;
                 existingItem.handleType = dialogState.handleType;
@@ -174,6 +183,9 @@ class _WindowQuotationScreenState extends State<WindowQuotationScreen> {
                   initialWindowSeries: dialogState.windowSeries,
                   initialDesignId: dialogState.designId,
                   initialFrameColor: dialogState.frameColor,
+                  initialColumnWidthsMm: dialogState.columnWidthsMm,
+                  initialRowHeightsMm: dialogState.rowHeightsMm,
+                  initialPanelOptions: dialogState.panelOptions,
                   initialGi: dialogState.gi,
                   initialSlidingType: dialogState.slidingType,
                   initialHandleType: dialogState.handleType,
@@ -270,6 +282,9 @@ class _WindowQuotationScreenState extends State<WindowQuotationScreen> {
                             windowSeries: item.windowSeries,
                             designId: item.designId,
                             frameColor: item.frameColor,
+                            columnWidthsMm: item.columnWidthsMm,
+                            rowHeightsMm: item.rowHeightsMm,
+                            panelOptions: item.panelOptions,
                             gi: item.gi,
                             glassType: item.glassType.text,
                             sashOuter: item.sashOuter.text,
@@ -625,13 +640,11 @@ class _WindowQuotationScreenState extends State<WindowQuotationScreen> {
           const SizedBox(width: 8),
           // Design thumbnail
           SizedBox(
-            width: 44,
-            height: 44,
+            width: 64,
+            height: 64,
             child: SvgPicture.string(
-              buildWindowSvg(
-                design: designById(item.designId),
-                widthMm: double.tryParse(item.widthMm.text) ?? 0,
-                lengthMm: double.tryParse(item.lengthMm.text) ?? 0,
+              designSvgOrPlaceholder(
+                designById(item.designId),
                 frameColorKey: item.frameColor,
               ),
               fit: BoxFit.contain,
@@ -831,9 +844,21 @@ class WindowQuotationItem {
   String slidingType = '2 Track'; // 2 Track, 3 Track
   String handleType = 'Touch Lock'; // Touch Lock, Popup Lock, etc.
 
-  // Casement-only
+  // Casement-only (item-level legacy; per-panel overrides live in panelOptions)
   String locking = 'Single Point'; // Single Point, Multi Point
   String hinges = '2D Hinges'; // 2D Hinges, 3D Hinges
+
+  /// Per-column widths in mm (one per design column). Empty = falls back to
+  /// the single legacy widthMm controller value.
+  List<double> columnWidthsMm = [];
+
+  /// Per-row heights in mm (one per design row). Empty = falls back to
+  /// the single legacy lengthMm controller value.
+  List<double> rowHeightsMm = [];
+
+  /// Per-panel options, row-major flat (length = rows*cols when present).
+  /// Each entry is a map like {'hinges': '3D Hinges', 'locking': 'Multi Point'}.
+  List<Map<String, String>> panelOptions = [];
 
   double areaSqft = 0.0;
   double amount = 0.0;
@@ -860,6 +885,9 @@ class WindowQuotationItem {
     String? initialHandleType,
     String? initialLocking,
     String? initialHinges,
+    List<double>? initialColumnWidthsMm,
+    List<double>? initialRowHeightsMm,
+    List<Map<String, String>>? initialPanelOptions,
   }) {
     if (initialDescription != null) description.text = initialDescription;
     if (initialLengthMm != null) lengthMm.text = initialLengthMm;
@@ -880,21 +908,49 @@ class WindowQuotationItem {
     if (initialHandleType != null) handleType = initialHandleType;
     if (initialLocking != null) locking = initialLocking;
     if (initialHinges != null) hinges = initialHinges;
+    if (initialColumnWidthsMm != null && initialColumnWidthsMm.isNotEmpty) {
+      columnWidthsMm = List<double>.from(initialColumnWidthsMm);
+    }
+    if (initialRowHeightsMm != null && initialRowHeightsMm.isNotEmpty) {
+      rowHeightsMm = List<double>.from(initialRowHeightsMm);
+    }
+    if (initialPanelOptions != null && initialPanelOptions.isNotEmpty) {
+      panelOptions = initialPanelOptions
+          .map((m) => Map<String, String>.from(m))
+          .toList();
+    }
 
     // Calculate initial amount if values provided
     updateAmount();
   }
 
   void updateAmount() {
-    double l = double.tryParse(lengthMm.text) ?? 0;
-    double w = double.tryParse(widthMm.text) ?? 0;
     double q = double.tryParse(qty.text) ?? 1;
     double r = double.tryParse(rate.text) ?? 0;
 
-    // Convert mm² to sqft
-    areaSqft = (l * w) / _sqmmPerSqft;
+    double totalMm2 = 0;
+    if (columnWidthsMm.isNotEmpty && rowHeightsMm.isNotEmpty) {
+      // Sum over the grid: every (col, row) pane contributes width*height.
+      for (final h in rowHeightsMm) {
+        for (final w in columnWidthsMm) {
+          totalMm2 += w * h;
+        }
+      }
+      // Keep legacy length/width controllers in sync with totals for any
+      // older code paths (PDF heading text, etc.) that still read them.
+      final totalW = columnWidthsMm.reduce((a, b) => a + b);
+      final totalH = rowHeightsMm.reduce((a, b) => a + b);
+      lengthMm.text = totalH.toStringAsFixed(0);
+      widthMm.text = totalW.toStringAsFixed(0);
+    } else {
+      // Legacy single-pane path.
+      final l = double.tryParse(lengthMm.text) ?? 0;
+      final w = double.tryParse(widthMm.text) ?? 0;
+      totalMm2 = l * w;
+    }
+    areaSqft = totalMm2 / _sqmmPerSqft;
     amount = areaSqft * q * r;
-    onChanged(); // Notify the parent to rebuild totals
+    onChanged();
   }
 
   void dispose() {
@@ -936,6 +992,9 @@ class _DialogDropdownState {
   final String handleType;
   final String locking;
   final String hinges;
+  final List<double> columnWidthsMm;
+  final List<double> rowHeightsMm;
+  final List<Map<String, String>> panelOptions;
 
   _DialogDropdownState({
     required this.windowSeries,
@@ -946,6 +1005,9 @@ class _DialogDropdownState {
     required this.handleType,
     required this.locking,
     required this.hinges,
+    required this.columnWidthsMm,
+    required this.rowHeightsMm,
+    required this.panelOptions,
   });
 }
 
@@ -969,6 +1031,9 @@ class _WindowItemDialog extends StatefulWidget {
   final String initialHandleType;
   final String initialLocking;
   final String initialHinges;
+  final List<double> initialColumnWidthsMm;
+  final List<double> initialRowHeightsMm;
+  final List<Map<String, String>> initialPanelOptions;
 
   final void Function(_DialogDropdownState state) onSave;
   final VoidCallback onCancel;
@@ -989,6 +1054,9 @@ class _WindowItemDialog extends StatefulWidget {
     required this.initialHandleType,
     required this.initialLocking,
     required this.initialHinges,
+    required this.initialColumnWidthsMm,
+    required this.initialRowHeightsMm,
+    required this.initialPanelOptions,
     required this.onSave,
     required this.onCancel,
   });
@@ -1012,6 +1080,17 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
   late String _locking;
   late String _hinges;
 
+  /// Per-column width controllers (length = design.cols)
+  late List<TextEditingController> _widthCtrls;
+
+  /// Per-row height controllers (length = design.rows)
+  late List<TextEditingController> _heightCtrls;
+
+  /// Per-panel option maps, flat row-major (length = rows*cols). Currently
+  /// always empty arrays — kept on the model for forward compatibility with
+  /// designs that vary by panel kind in a future iteration.
+  late List<Map<String, String>> _panelOptions;
+
   @override
   void initState() {
     super.initState();
@@ -1024,22 +1103,127 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
     _locking = widget.initialLocking;
     _hinges = widget.initialHinges;
 
+    _initDimensionControllers();
+
     _recalculate();
-    widget.lengthCtrl.addListener(_recalculate);
-    widget.widthCtrl.addListener(_recalculate);
     widget.qtyCtrl.addListener(_recalculate);
     widget.rateCtrl.addListener(_recalculate);
   }
 
+  /// Builds width/height controllers and panelOptions for the current design,
+  /// seeding from `initialColumnWidthsMm` / `initialRowHeightsMm` /
+  /// `initialPanelOptions` when present, else from the legacy single
+  /// length/width controllers (so the first time a user opens an existing
+  /// item with only legacy dims, they're populated as a 1×1 fallback).
+  void _initDimensionControllers() {
+    final design = designById(_designId);
+    final cols = design.cols;
+    final rows = design.rows;
+
+    final initW = widget.initialColumnWidthsMm.length == cols
+        ? widget.initialColumnWidthsMm
+        : <double>[];
+    final initH = widget.initialRowHeightsMm.length == rows
+        ? widget.initialRowHeightsMm
+        : <double>[];
+    _widthCtrls = List.generate(cols, (i) {
+      final v = initW.isNotEmpty
+          ? initW[i]
+          : (i == 0 ? (double.tryParse(widget.widthCtrl.text) ?? 0) : 0);
+      final c = TextEditingController(text: v > 0 ? v.toStringAsFixed(0) : '');
+      c.addListener(_recalculate);
+      return c;
+    });
+    _heightCtrls = List.generate(rows, (i) {
+      final v = initH.isNotEmpty
+          ? initH[i]
+          : (i == 0 ? (double.tryParse(widget.lengthCtrl.text) ?? 0) : 0);
+      final c = TextEditingController(text: v > 0 ? v.toStringAsFixed(0) : '');
+      c.addListener(_recalculate);
+      return c;
+    });
+    final total = rows * cols;
+    if (widget.initialPanelOptions.length == total) {
+      _panelOptions = widget.initialPanelOptions
+          .map((m) => Map<String, String>.from(m))
+          .toList();
+    } else {
+      _panelOptions = List.generate(total, (_) => <String, String>{});
+    }
+  }
+
+  /// Called when the user picks a (potentially different) design via the
+  /// picker. Rebuilds dimension controllers to match the new grid shape,
+  /// preserving entered values where the new grid still has that slot.
+  void _onDesignChanged(String newDesignId, String newFrameColor) {
+    // Snapshot current values before disposing.
+    final oldWidths =
+        _widthCtrls.map((c) => double.tryParse(c.text) ?? 0).toList();
+    final oldHeights =
+        _heightCtrls.map((c) => double.tryParse(c.text) ?? 0).toList();
+    for (final c in _widthCtrls) {
+      c.dispose();
+    }
+    for (final c in _heightCtrls) {
+      c.dispose();
+    }
+    final newDesign = designById(newDesignId);
+    _widthCtrls = List.generate(newDesign.cols, (i) {
+      final v = i < oldWidths.length ? oldWidths[i] : 0.0;
+      final c = TextEditingController(text: v > 0 ? v.toStringAsFixed(0) : '');
+      c.addListener(_recalculate);
+      return c;
+    });
+    _heightCtrls = List.generate(newDesign.rows, (i) {
+      final v = i < oldHeights.length ? oldHeights[i] : 0.0;
+      final c = TextEditingController(text: v > 0 ? v.toStringAsFixed(0) : '');
+      c.addListener(_recalculate);
+      return c;
+    });
+    _panelOptions =
+        List.generate(newDesign.rows * newDesign.cols, (_) => <String, String>{});
+    _designId = newDesignId;
+    _frameColor = newFrameColor;
+    _windowSeries = newDesign.family;
+    _recalculate();
+  }
+
+  @override
+  void dispose() {
+    for (final c in _widthCtrls) {
+      c.dispose();
+    }
+    for (final c in _heightCtrls) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  List<double> _widths() =>
+      _widthCtrls.map((c) => double.tryParse(c.text) ?? 0).toList();
+  List<double> _heights() =>
+      _heightCtrls.map((c) => double.tryParse(c.text) ?? 0).toList();
+
   void _recalculate() {
-    final l = double.tryParse(widget.lengthCtrl.text) ?? 0;
-    final w = double.tryParse(widget.widthCtrl.text) ?? 0;
+    final widths = _widths();
+    final heights = _heights();
     final q = double.tryParse(widget.qtyCtrl.text) ?? 1;
     final r = double.tryParse(widget.rateCtrl.text) ?? 0;
+    double totalMm2 = 0;
+    for (final h in heights) {
+      for (final w in widths) {
+        totalMm2 += w * h;
+      }
+    }
     setState(() {
-      _areaSqft = (l * w) / _sqmmPerSqft;
+      _areaSqft = totalMm2 / _sqmmPerSqft;
       _amount = _areaSqft * q * r;
     });
+    // Sync legacy lengthCtrl/widthCtrl with totals so other code paths keep working.
+    final totalW = widths.fold<double>(0, (a, b) => a + b);
+    final totalH = heights.fold<double>(0, (a, b) => a + b);
+    if (totalW > 0) widget.widthCtrl.text = totalW.toStringAsFixed(0);
+    if (totalH > 0) widget.lengthCtrl.text = totalH.toStringAsFixed(0);
   }
 
   void _handleSave() {
@@ -1067,48 +1251,32 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
       return;
     }
 
-    // 3. Validate Length
-    final lengthStr = widget.lengthCtrl.text.trim();
-    if (lengthStr.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter Length (mm)'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-    final length = double.tryParse(lengthStr);
-    if (length == null || length <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a valid positive number for Length'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
+    // 3. Validate per-column widths
+    final widths = _widths();
+    for (var i = 0; i < widths.length; i++) {
+      if (widths[i] <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Please enter width for panel ${i + 1}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
     }
 
-    // 4. Validate Width
-    final widthStr = widget.widthCtrl.text.trim();
-    if (widthStr.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter Width (mm)'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-    final width = double.tryParse(widthStr);
-    if (width == null || width <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a valid positive number for Width'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
+    // 4. Validate per-row heights
+    final heights = _heights();
+    for (var i = 0; i < heights.length; i++) {
+      if (heights[i] <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Please enter height for row ${i + 1}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
     }
 
     // 5. Validate Quantity
@@ -1164,6 +1332,11 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
       handleType: _handleType,
       locking: _locking,
       hinges: _hinges,
+      columnWidthsMm: _widths(),
+      rowHeightsMm: _heights(),
+      panelOptions: _panelOptions
+          .map((m) => Map<String, String>.from(m))
+          .toList(),
     ));
   }
 
@@ -1225,9 +1398,8 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
                         );
                         if (result != null) {
                           setState(() {
-                            _designId = result.designId;
-                            _frameColor = result.frameColor;
-                            _windowSeries = designById(result.designId).family;
+                            _onDesignChanged(
+                                result.designId, result.frameColor);
                           });
                         }
                       },
@@ -1280,59 +1452,19 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
                     ),
                     const SizedBox(height: 20),
 
-                    // ── Slider-Only ──
-                    if (_windowSeries == 'Slider') ...[
-                      _sectionLabel("Slider Options"),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              value: _slidingType,
-                              decoration: const InputDecoration(
-                                labelText: "Sliding Type",
-                                border: OutlineInputBorder(),
-                                prefixIcon: Icon(Icons.swap_horiz),
-                              ),
-                              items: ['2 Track', '3 Track']
-                                  .map((e) => DropdownMenuItem(
-                                      value: e, child: Text(e)))
-                                  .toList(),
-                              onChanged: (val) =>
-                                  setState(() => _slidingType = val!),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              value: _handleType,
-                              decoration: const InputDecoration(
-                                labelText: "Handle Type",
-                                border: OutlineInputBorder(),
-                                prefixIcon: Icon(Icons.pan_tool),
-                              ),
-                              items: [
-                                'Touch Lock',
-                                'Popup Lock',
-                                'L Handle',
-                                'D Handle',
-                                'Crescent Lock Handle',
-                                'No Lock',
-                              ]
-                                  .map((e) => DropdownMenuItem(
-                                      value: e, child: Text(e)))
-                                  .toList(),
-                              onChanged: (val) =>
-                                  setState(() => _handleType = val!),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                    ],
+                    // ── Dimensions ──
+                    _sectionLabel("Dimensions"),
+                    const SizedBox(height: 10),
+                    _DimensionsEditor(
+                      design: designById(_designId),
+                      frameColor: _frameColor,
+                      widthCtrls: _widthCtrls,
+                      heightCtrls: _heightCtrls,
+                    ),
+                    const SizedBox(height: 16),
 
-                    // ── Casement-Only ──
-                    if (_windowSeries == 'Casement') ...[
+                    // ── Casement options (only shown when a Casement design is picked) ──
+                    if (designById(_designId).family == 'Casement') ...[
                       _sectionLabel("Casement Options"),
                       const SizedBox(height: 10),
                       Row(
@@ -1345,12 +1477,12 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
                                 border: OutlineInputBorder(),
                                 prefixIcon: Icon(Icons.lock),
                               ),
-                              items: ['Single Point', 'Multi Point']
+                              items: const ['Single Point', 'Multi Point']
                                   .map((e) => DropdownMenuItem(
                                       value: e, child: Text(e)))
                                   .toList(),
-                              onChanged: (val) =>
-                                  setState(() => _locking = val!),
+                              onChanged: (v) =>
+                                  setState(() => _locking = v ?? _locking),
                             ),
                           ),
                           const SizedBox(width: 16),
@@ -1362,54 +1494,21 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
                                 border: OutlineInputBorder(),
                                 prefixIcon: Icon(Icons.rotate_right),
                               ),
-                              items: ['2D Hinges', '3D Hinges']
+                              items: const ['2D Hinges', '3D Hinges']
                                   .map((e) => DropdownMenuItem(
                                       value: e, child: Text(e)))
                                   .toList(),
-                              onChanged: (val) =>
-                                  setState(() => _hinges = val!),
+                              onChanged: (v) =>
+                                  setState(() => _hinges = v ?? _hinges),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 16),
                     ],
 
-                    // ── Dimensions & Pricing ──
-                    _sectionLabel("Dimensions & Pricing"),
+                    _sectionLabel("Pricing"),
                     const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: widget.lengthCtrl,
-                            keyboardType: const TextInputType.numberWithOptions(
-                                decimal: true),
-                            inputFormatters: [_DecimalTextInputFormatter()],
-                            decoration: const InputDecoration(
-                              labelText: "Length (mm)",
-                              border: OutlineInputBorder(),
-                              prefixIcon: Icon(Icons.straighten),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: TextField(
-                            controller: widget.widthCtrl,
-                            keyboardType: const TextInputType.numberWithOptions(
-                                decimal: true),
-                            inputFormatters: [_DecimalTextInputFormatter()],
-                            decoration: const InputDecoration(
-                              labelText: "Width (mm)",
-                              border: OutlineInputBorder(),
-                              prefixIcon: Icon(Icons.straighten),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
 
                     // Area highlight
                     Container(
@@ -1569,7 +1668,7 @@ class _DesignPickerTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final design = designById(designId);
-    final svg = buildWindowSvg(design: design, frameColorKey: frameColor);
+    final svg = designSvgOrPlaceholder(design, frameColorKey: frameColor);
     return InkWell(
       onTap: onTap,
       child: Container(
@@ -1607,3 +1706,108 @@ class _DesignPickerTile extends StatelessWidget {
     );
   }
 }
+
+/// Static-design dimension input.
+///
+/// Shows the catalog SVG for the chosen design plus a row of width fields
+/// underneath (one per column) and a column of height fields beside it (one
+/// per row). The diagram is fixed catalog art — it does not reshape with the
+/// entered dimensions; the dimensions feed the area math and the per-panel
+/// labels printed in the PDF.
+class _DimensionsEditor extends StatelessWidget {
+  final WindowDesign design;
+  final String frameColor;
+  final List<TextEditingController> widthCtrls;
+  final List<TextEditingController> heightCtrls;
+
+  const _DimensionsEditor({
+    required this.design,
+    required this.frameColor,
+    required this.widthCtrls,
+    required this.heightCtrls,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final svg = designSvgOrPlaceholder(design, frameColorKey: frameColor);
+    const diagramHeight = 320.0;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: diagramHeight,
+                child: SvgPicture.string(svg, fit: BoxFit.contain),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Per-row height fields stacked vertically.
+            SizedBox(
+              width: 110,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  for (var r = 0; r < design.rows; r++) ...[
+                    _LabeledNumberField(
+                      controller: heightCtrls[r],
+                      label: design.rows == 1
+                          ? 'Height (mm)'
+                          : 'Row ${r + 1} ht (mm)',
+                    ),
+                    if (r != design.rows - 1) const SizedBox(height: 8),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        // Per-column width fields.
+        Row(
+          children: [
+            for (var c = 0; c < design.cols; c++) ...[
+              Expanded(
+                child: _LabeledNumberField(
+                  controller: widthCtrls[c],
+                  label: design.cols == 1
+                      ? 'Width (mm)'
+                      : 'Panel ${c + 1} wd (mm)',
+                ),
+              ),
+              if (c != design.cols - 1) const SizedBox(width: 8),
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _LabeledNumberField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  const _LabeledNumberField({
+    required this.controller,
+    required this.label,
+  });
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      keyboardType:
+          const TextInputType.numberWithOptions(decimal: true),
+      inputFormatters: [_DecimalTextInputFormatter()],
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+        isDense: true,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      ),
+    );
+  }
+}
+
