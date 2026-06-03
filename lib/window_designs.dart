@@ -223,6 +223,19 @@ const List<WindowDesign> kWindowDesigns = [
   // The bars are decorative (don't divide the actual glass).
   WindowDesign(id: 'cmt_2_gb', family: 'Casement (Georgian Bar)', label: 'CMT 2 GB', cols: 1, rows: 1),
   WindowDesign(id: 'cmt_13_gb', family: 'Casement (Georgian Bar)', label: 'CMT 13 GB', cols: 2, rows: 1),
+
+  // Sliding family - sliding-window catalog (SD series). Arrows on each pane
+  // indicate the slide direction; "+" markers indicate fixed (non-sliding) panes.
+  // Note: SD 6 is missing from the source catalog PDF.
+  WindowDesign(id: 'sd_1', family: 'Sliding', label: 'SD 1', cols: 2, rows: 1),
+  WindowDesign(id: 'sd_2', family: 'Sliding', label: 'SD 2', cols: 2, rows: 1),
+  WindowDesign(id: 'sd_3', family: 'Sliding', label: 'SD 3', cols: 3, rows: 1),
+  WindowDesign(id: 'sd_4', family: 'Sliding', label: 'SD 4', cols: 4, rows: 1),
+  WindowDesign(id: 'sd_5', family: 'Sliding', label: 'SD 5', cols: 2, rows: 1),
+  WindowDesign(id: 'sd_7', family: 'Sliding', label: 'SD 7', cols: 4, rows: 1),
+  WindowDesign(id: 'sd_8', family: 'Sliding', label: 'SD 8', cols: 2, rows: 1),
+  WindowDesign(id: 'sd_9', family: 'Sliding', label: 'SD 9', cols: 2, rows: 2, rowFractions: [0.30, 0.70]),
+  WindowDesign(id: 'sd_10', family: 'Sliding', label: 'SD 10', cols: 4, rows: 2, rowFractions: [0.30, 0.70]),
 ];
 
 /// Distinct families in catalog order (drives picker tabs).

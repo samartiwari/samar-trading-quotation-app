@@ -216,7 +216,7 @@ class PdfGenerator {
           return pw.Container(
             padding: const pw.EdgeInsets.only(top: 10),
             decoration: const pw.BoxDecoration(
-              border: pw.Border(top: pw.BorderSide(color: PdfColors.grey300, width: 1)),
+              border: pw.Border(top: pw.BorderSide(color: PdfColors.grey600, width: 1)),
             ),
             child: pw.Column(
               children: [
@@ -225,11 +225,11 @@ class PdfGenerator {
                   children: [
                     pw.Text(
                       '$companyName | Phone: $companyPhone',
-                      style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500),
+                      style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey800),
                     ),
                     pw.Text(
                       'Page ${context.pageNumber} of ${context.pagesCount}',
-                      style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500),
+                      style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey800),
                     ),
                   ],
                 ),
@@ -239,7 +239,7 @@ class PdfGenerator {
                     'Software powered by Samar Trading',
                     style: pw.TextStyle(
                       fontSize: 7,
-                      color: PdfColors.grey400,
+                      color: PdfColors.grey700,
                       fontStyle: pw.FontStyle.italic,
                     ),
                   ),
@@ -952,7 +952,7 @@ class PdfGenerator {
           return pw.Container(
             padding: const pw.EdgeInsets.only(top: 10),
             decoration: const pw.BoxDecoration(
-              border: pw.Border(top: pw.BorderSide(color: PdfColors.grey300, width: 1)),
+              border: pw.Border(top: pw.BorderSide(color: PdfColors.grey600, width: 1)),
             ),
             child: pw.Column(
               children: [
@@ -961,11 +961,11 @@ class PdfGenerator {
                   children: [
                     pw.Text(
                       '$companyName | Phone: $companyPhone',
-                      style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500),
+                      style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey800),
                     ),
                     pw.Text(
                       'Page ${context.pageNumber} of ${context.pagesCount}',
-                      style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500),
+                      style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey800),
                     ),
                   ],
                 ),
@@ -975,7 +975,7 @@ class PdfGenerator {
                     'Software powered by Samar Trading',
                     style: pw.TextStyle(
                       fontSize: 7,
-                      color: PdfColors.grey400,
+                      color: PdfColors.grey700,
                       fontStyle: pw.FontStyle.italic,
                     ),
                   ),
@@ -1653,9 +1653,14 @@ class PdfGenerator {
                               _descRow('Glass Type', item.glassType.text),
                             if (item.sashOuter.text.isNotEmpty)
                               _descRow('Sash / Outer', item.sashOuter.text),
-                            if (item.windowSeries == 'Casement') ...[
+                            if (item.windowSeries == 'Casement' ||
+                                item.windowSeries == 'Casement (Georgian Bar)') ...[
                               _descRow('Locking', item.locking),
                               _descRow('Hinges', item.hinges),
+                            ],
+                            if (item.windowSeries == 'Sliding') ...[
+                              _descRow('Sliding Type', item.slidingType),
+                              _descRow('Handle Type', item.handleType),
                             ],
                           ],
                         ),
@@ -1675,6 +1680,26 @@ class PdfGenerator {
                     ],
                   );
                 }),
+                // Footer row: total area summed across all items.
+                pw.TableRow(
+                  decoration: pw.BoxDecoration(color: PdfColors.grey200),
+                  children: [
+                    _tableCell('', align: pw.TextAlign.center),
+                    _tableCellWidget(
+                      pw.Center(
+                        child: pw.Text(
+                          'Total: ${items.fold<double>(0, (s, it) => s + it.areaSqft * (double.tryParse(it.qty.text) ?? 1)).toStringAsFixed(2)} Sq.ft',
+                          style: pw.TextStyle(
+                              fontSize: 10, fontWeight: pw.FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                    _tableCell(''),
+                    _tableCell(''),
+                    _tableCell(''),
+                    _tableCell(''),
+                  ],
+                ),
               ],
             ),
 
@@ -1685,7 +1710,7 @@ class PdfGenerator {
               mainAxisAlignment: pw.MainAxisAlignment.end,
               children: [
                 pw.Container(
-                  width: 220,
+                  width: 280,
                   padding: const pw.EdgeInsets.all(16),
                   decoration: pw.BoxDecoration(
                     color: lightBg,
@@ -1694,35 +1719,66 @@ class PdfGenerator {
                     border: pw.Border.all(color: PdfColors.grey300),
                   ),
                   child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.stretch,
                     children: [
                       _totalRow('Subtotal', subtotal),
                       pw.SizedBox(height: 6),
-                      _totalRow('GST ($gstPercentage%)', gst),
-                      pw.Divider(color: PdfColors.grey400, height: 16),
+                      if (gstPercentage < 0)
+                        // GST is not added; note that it is extra.
+                        pw.Row(
+                          mainAxisAlignment:
+                              pw.MainAxisAlignment.spaceBetween,
+                          children: [
+                            pw.Text('GST',
+                                style: const pw.TextStyle(fontSize: 10)),
+                            pw.Text('Extra',
+                                style: pw.TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: pw.FontWeight.bold)),
+                          ],
+                        )
+                      else
+                        _totalRow('GST ($gstPercentage%)', gst),
+                      pw.SizedBox(height: 6),
+                      // Freight is not included in the grand total; quoted separately.
+                      pw.Row(
+                        mainAxisAlignment:
+                            pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text('Freight',
+                              style: const pw.TextStyle(fontSize: 10)),
+                          pw.Text('Extra',
+                              style: pw.TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: pw.FontWeight.bold)),
+                        ],
+                      ),
+                      pw.Divider(color: PdfColors.grey400, height: 20),
                       pw.Container(
                         padding: const pw.EdgeInsets.symmetric(
-                            vertical: 8, horizontal: 12),
+                            vertical: 10, horizontal: 14),
                         decoration: pw.BoxDecoration(
                           color: primaryColor,
                           borderRadius: const pw.BorderRadius.all(
                               pw.Radius.circular(4)),
                         ),
-                        child: pw.Row(
-                          mainAxisAlignment:
-                              pw.MainAxisAlignment.spaceBetween,
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
                           children: [
                             pw.Text(
                               'GRAND TOTAL',
                               style: pw.TextStyle(
-                                fontSize: 11,
+                                fontSize: 10,
                                 fontWeight: pw.FontWeight.bold,
                                 color: PdfColors.white,
+                                letterSpacing: 1.2,
                               ),
                             ),
+                            pw.SizedBox(height: 4),
                             pw.Text(
                               'Rs. ${grandTotal.toStringAsFixed(2)}',
                               style: pw.TextStyle(
-                                fontSize: 13,
+                                fontSize: 18,
                                 fontWeight: pw.FontWeight.bold,
                                 color: PdfColors.white,
                               ),

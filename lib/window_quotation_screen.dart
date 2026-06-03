@@ -35,7 +35,9 @@ class _WindowQuotationScreenState extends State<WindowQuotationScreen> {
     return _items.fold(0, (sum, item) => sum + item.amount);
   }
 
-  double get _gst => _subtotal * (_gstPercentage / 100);
+  // When gstPercentage is -1 ('Extra'), GST is not added to the total - the PDF
+  // simply notes 'GST Extra' so the customer arranges it separately.
+  double get _gst => _gstPercentage < 0 ? 0 : _subtotal * (_gstPercentage / 100);
   double get _grandTotal => _subtotal + _gst;
 
   @override
@@ -86,6 +88,31 @@ class _WindowQuotationScreenState extends State<WindowQuotationScreen> {
       _items[index].dispose();
       _items.removeAt(index);
     });
+  }
+
+  Future<void> _confirmRemoveItem(int index) async {
+    final design = designById(_items[index].designId);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete window?'),
+        content: Text(
+            'Remove ${design.label} (item #${index + 1}) from this quotation? '
+            'This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) _removeItem(index);
   }
 
   void _editItem(int index) {
@@ -448,6 +475,7 @@ class _WindowQuotationScreenState extends State<WindowQuotationScreen> {
                       DropdownMenuItem(value: 9, child: Text("9%")),
                       DropdownMenuItem(value: 5, child: Text("5%")),
                       DropdownMenuItem(value: 0, child: Text("0%")),
+                      DropdownMenuItem(value: -1, child: Text("Extra")),
                     ],
                     onChanged: (val) {
                       setState(() => _gstPercentage = val!);
@@ -759,7 +787,7 @@ class _WindowQuotationScreenState extends State<WindowQuotationScreen> {
           IconButton(
             icon: const Icon(Icons.delete, color: Colors.red),
             tooltip: "Delete",
-            onPressed: () => _removeItem(index),
+            onPressed: () => _confirmRemoveItem(index),
           ),
         ],
       ),
@@ -781,7 +809,18 @@ class _WindowQuotationScreenState extends State<WindowQuotationScreen> {
           children: [
             _buildSummaryRow("Subtotal", _subtotal),
             const SizedBox(height: 8),
-            _buildSummaryRow("GST ($_gstPercentage%)", _gst),
+            _gstPercentage < 0
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: const [
+                      Text("GST",
+                          style: TextStyle(fontSize: 14, color: Colors.grey)),
+                      Text("Extra",
+                          style: TextStyle(
+                              fontSize: 14, fontWeight: FontWeight.w500)),
+                    ],
+                  )
+                : _buildSummaryRow("GST ($_gstPercentage%)", _gst),
             const Divider(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1463,8 +1502,9 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
                     ),
                     const SizedBox(height: 16),
 
-                    // ── Casement options (only shown when a Casement design is picked) ──
-                    if (designById(_designId).family == 'Casement') ...[
+                    // ── Casement options (shown for Casement + Casement Georgian Bar designs) ──
+                    if (designById(_designId).family == 'Casement' ||
+                        designById(_designId).family == 'Casement (Georgian Bar)') ...[
                       _sectionLabel("Casement Options"),
                       const SizedBox(height: 10),
                       Row(
@@ -1500,6 +1540,57 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
                                   .toList(),
                               onChanged: (v) =>
                                   setState(() => _hinges = v ?? _hinges),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // ── Sliding options (only shown when a Sliding design is picked) ──
+                    if (designById(_designId).family == 'Sliding') ...[
+                      _sectionLabel("Sliding Options"),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value: _slidingType,
+                              decoration: const InputDecoration(
+                                labelText: "Sliding Type",
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.swap_horiz),
+                              ),
+                              items: const ['2 Track', '3 Track']
+                                  .map((e) => DropdownMenuItem(
+                                      value: e, child: Text(e)))
+                                  .toList(),
+                              onChanged: (v) =>
+                                  setState(() => _slidingType = v ?? _slidingType),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value: _handleType,
+                              decoration: const InputDecoration(
+                                labelText: "Handle Type",
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.pan_tool),
+                              ),
+                              items: const [
+                                'Touch Lock',
+                                'Popup Lock',
+                                'L Handle',
+                                'D Handle',
+                                'Crescent Lock Handle',
+                                'No Lock',
+                              ]
+                                  .map((e) => DropdownMenuItem(
+                                      value: e, child: Text(e)))
+                                  .toList(),
+                              onChanged: (v) =>
+                                  setState(() => _handleType = v ?? _handleType),
                             ),
                           ),
                         ],
