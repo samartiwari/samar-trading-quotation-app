@@ -542,8 +542,11 @@ class PdfGenerator {
   static pw.Widget _drawingCell(WindowQuotationItem item, pw.Widget drawing) {
     final widths = item.columnWidthsMm;
     final heights = item.rowHeightsMm;
-    final hasWidths = widths.isNotEmpty;
-    final hasHeights = heights.isNotEmpty;
+    // Honor per-axis mode: only show split labels when the user actually
+    // entered per-column / per-row values. In 'total' mode show a single
+    // total label (read from the legacy widthMm / lengthMm controllers).
+    final hasWidths = item.widthMode == 'split' && widths.isNotEmpty;
+    final hasHeights = item.heightMode == 'split' && heights.isNotEmpty;
 
     // Now that the drawing column is wide and the diagram is large (130x130),
     // labels can be bigger / more readable. Still shrink slightly for 4+
@@ -637,7 +640,12 @@ class PdfGenerator {
   /// picture.
   static pw.Widget _windowDrawing(WindowQuotationItem item) {
     final design = designById(item.designId);
-    final svg = designSvgOrPlaceholder(design, frameColorKey: item.frameColor);
+    final svg = designSvgOrPlaceholder(
+      design,
+      frameColorKey: item.frameColor,
+      withMesh: item.windowSeries == 'Sliding' &&
+          item.slidingType == '3 Track',
+    );
     return pw.SvgImage(svg: svg, width: 110, height: 110);
   }
 

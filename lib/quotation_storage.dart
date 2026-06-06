@@ -349,6 +349,7 @@ class SavedWindowQuotationItem {
   final double amount;
 
   // New fields — all optional for backward compatibility
+  final String itemType; // 'Window' or 'Door' - changes the noun used in the PDF
   final String windowSeries; // family label: 'Fixed', 'Slider', 'Casement', ...
   final String designId; // catalog design key, e.g. 'fixed_3'
   final String frameColor; // 'white' | 'brown' | 'grey' | 'black'
@@ -363,6 +364,14 @@ class SavedWindowQuotationItem {
   // Casement-only (item-level legacy; per-panel overrides live in panelOptions)
   final String locking; // 'Single Point', 'Multi Point'
   final String hinges; // '2D Hinges', '3D Hinges'
+
+  /// 'split' = per-column widths entered; 'total' = single total width entered
+  /// (stored in widthMm). Defaults to 'split' for designs with cols > 1.
+  final String widthMode;
+
+  /// 'split' = per-row heights entered; 'total' = single total height entered
+  /// (stored in lengthMm). Defaults to 'split' for designs with rows > 1.
+  final String heightMode;
 
   /// Per-column widths in mm, one entry per design column. Empty list = use
   /// legacy widthMm as the single column. (Round 2: source of truth for the
@@ -386,6 +395,7 @@ class SavedWindowQuotationItem {
     required this.qty,
     required this.rate,
     required this.amount,
+    this.itemType = 'Window',
     this.windowSeries = 'Fixed',
     this.designId = 'fixed_1',
     this.frameColor = 'white',
@@ -396,6 +406,8 @@ class SavedWindowQuotationItem {
     this.handleType = '',
     this.locking = '',
     this.hinges = '',
+    this.widthMode = 'split',
+    this.heightMode = 'split',
     this.columnWidthsMm = const [],
     this.rowHeightsMm = const [],
     this.panelOptions = const [],
@@ -409,6 +421,7 @@ class SavedWindowQuotationItem {
         'qty': qty,
         'rate': rate,
         'amount': amount,
+        'itemType': itemType,
         'windowSeries': windowSeries,
         'designId': designId,
         'frameColor': frameColor,
@@ -419,6 +432,8 @@ class SavedWindowQuotationItem {
         'handleType': handleType,
         'locking': locking,
         'hinges': hinges,
+        'widthMode': widthMode,
+        'heightMode': heightMode,
         'columnWidthsMm': columnWidthsMm,
         'rowHeightsMm': rowHeightsMm,
         'panelOptions': panelOptions,
@@ -433,6 +448,7 @@ class SavedWindowQuotationItem {
         qty: json['qty'] as String,
         rate: json['rate'] as String,
         amount: (json['amount'] as num).toDouble(),
+        itemType: (json['itemType'] as String?) ?? 'Window',
         windowSeries: (json['windowSeries'] as String?) ?? 'Fixed',
         designId: (json['designId'] as String?) ?? 'fixed_1',
         frameColor: (json['frameColor'] as String?) ?? 'white',
@@ -443,6 +459,8 @@ class SavedWindowQuotationItem {
         handleType: (json['handleType'] as String?) ?? '',
         locking: (json['locking'] as String?) ?? '',
         hinges: (json['hinges'] as String?) ?? '',
+        widthMode: (json['widthMode'] as String?) ?? 'split',
+        heightMode: (json['heightMode'] as String?) ?? 'split',
         columnWidthsMm: (json['columnWidthsMm'] as List?)
                 ?.map((e) => (e as num).toDouble())
                 .toList() ??

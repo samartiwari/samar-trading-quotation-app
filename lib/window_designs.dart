@@ -10,6 +10,30 @@ import 'package:flutter/services.dart' show rootBundle;
 /// to draw the picture (the SVG is fixed); it only tells the form how many
 /// width / height inputs to render and feeds the area calculation.
 
+/// Where the mesh-screen indicator should be drawn on a sliding design, as
+/// fractions of the SVG viewBox. The triangle is anchored at the bottom-right
+/// corner of the (right, bottom) point and extends up-left.
+///
+/// Every Sliding-family design MUST provide a MeshCorner so the indicator
+/// lands on an actual slider leaf rather than a neighbouring fixed pane.
+class MeshCorner {
+  /// Bottom-right corner X as a fraction of viewBox width (0..1).
+  final double rightFrac;
+
+  /// Bottom-right corner Y as a fraction of viewBox height (0..1).
+  final double bottomFrac;
+
+  /// Triangle side length as a fraction of viewBox width. Defaults to a
+  /// reasonable value; designs with very narrow slider columns can lower it.
+  final double sizeFrac;
+
+  const MeshCorner({
+    required this.rightFrac,
+    required this.bottomFrac,
+    this.sizeFrac = 0.18,
+  });
+}
+
 /// A selectable window design (one catalog entry, e.g. "Fixed 3").
 class WindowDesign {
   final String id; // stable key persisted on the item, e.g. 'fixed_3'
@@ -25,6 +49,12 @@ class WindowDesign {
   final List<double>? colFractions;
   final List<double>? rowFractions;
 
+  /// Where the mesh-screen indicator should sit when the user picks 3 Track.
+  /// Only meaningful for Sliding-family designs; null means "no mesh indicator".
+  /// ANY new Sliding design MUST set this so the triangle lands on the actual
+  /// slider leaf (not on an adjacent fixed pane).
+  final MeshCorner? meshCorner;
+
   const WindowDesign({
     required this.id,
     required this.family,
@@ -33,6 +63,7 @@ class WindowDesign {
     required this.rows,
     this.colFractions,
     this.rowFractions,
+    this.meshCorner,
   });
 
   String get assetPath => 'assets/windows/$id.svg';
@@ -227,15 +258,61 @@ const List<WindowDesign> kWindowDesigns = [
   // Sliding family - sliding-window catalog (SD series). Arrows on each pane
   // indicate the slide direction; "+" markers indicate fixed (non-sliding) panes.
   // Note: SD 6 is missing from the source catalog PDF.
-  WindowDesign(id: 'sd_1', family: 'Sliding', label: 'SD 1', cols: 2, rows: 1),
-  WindowDesign(id: 'sd_2', family: 'Sliding', label: 'SD 2', cols: 2, rows: 1),
-  WindowDesign(id: 'sd_3', family: 'Sliding', label: 'SD 3', cols: 3, rows: 1),
-  WindowDesign(id: 'sd_4', family: 'Sliding', label: 'SD 4', cols: 4, rows: 1),
-  WindowDesign(id: 'sd_5', family: 'Sliding', label: 'SD 5', cols: 2, rows: 1),
-  WindowDesign(id: 'sd_7', family: 'Sliding', label: 'SD 7', cols: 4, rows: 1),
-  WindowDesign(id: 'sd_8', family: 'Sliding', label: 'SD 8', cols: 2, rows: 1),
-  WindowDesign(id: 'sd_9', family: 'Sliding', label: 'SD 9', cols: 2, rows: 2, rowFractions: [0.30, 0.70]),
-  WindowDesign(id: 'sd_10', family: 'Sliding', label: 'SD 10', cols: 4, rows: 2, rowFractions: [0.30, 0.70]),
+  // For Sliding designs the meshCorner must point to a slider leaf (NOT an
+  // adjacent fixed pane). When adding any new SD design, set meshCorner so
+  // the bottom-right of the chosen pane is the slider that exists on track 3.
+  WindowDesign(
+    id: 'sd_1', family: 'Sliding', label: 'SD 1', cols: 2, rows: 1,
+    // [F, slide_L] - rightmost slider is the right pane.
+    meshCorner: MeshCorner(rightFrac: 0.95, bottomFrac: 0.95),
+  ),
+  WindowDesign(
+    id: 'sd_2', family: 'Sliding', label: 'SD 2', cols: 2, rows: 1,
+    // [slide_R, slide_L] - both sliders. Mark right pane.
+    meshCorner: MeshCorner(rightFrac: 0.95, bottomFrac: 0.95),
+  ),
+  WindowDesign(
+    id: 'sd_3', family: 'Sliding', label: 'SD 3', cols: 3, rows: 1,
+    // [slide_R, F, slide_L] - rightmost slider is col 3.
+    meshCorner: MeshCorner(rightFrac: 0.95, bottomFrac: 0.95, sizeFrac: 0.13),
+  ),
+  WindowDesign(
+    id: 'sd_4', family: 'Sliding', label: 'SD 4', cols: 4, rows: 1,
+    // [F, slide_L, slide_R, F] - rightmost SLIDER is col 3 of 4. Stop short
+    // of the right edge so the triangle doesn't land on the fixed col 4.
+    meshCorner: MeshCorner(rightFrac: 0.74, bottomFrac: 0.95, sizeFrac: 0.12),
+  ),
+  WindowDesign(
+    id: 'sd_5', family: 'Sliding', label: 'SD 5', cols: 2, rows: 1,
+    // [slide_L, F] - the slider is the LEFT pane (col 1 of 2).
+    meshCorner: MeshCorner(rightFrac: 0.50, bottomFrac: 0.95, sizeFrac: 0.20),
+  ),
+  WindowDesign(
+    id: 'sd_7', family: 'Sliding', label: 'SD 7', cols: 4, rows: 1,
+    // All 4 sliders; mark the right pane.
+    meshCorner: MeshCorner(rightFrac: 0.95, bottomFrac: 0.95, sizeFrac: 0.12),
+  ),
+  WindowDesign(
+    id: 'sd_8', family: 'Sliding', label: 'SD 8', cols: 2, rows: 1,
+    // [F, slide_L].
+    meshCorner: MeshCorner(rightFrac: 0.95, bottomFrac: 0.95),
+  ),
+  WindowDesign(
+    id: 'sd_9', family: 'Sliding', label: 'SD 9', cols: 2, rows: 2, rowFractions: [0.30, 0.70],
+    // top [F,F] transoms, bottom [slide_R, slide_L]; rightmost slider is the bottom-right pane.
+    meshCorner: MeshCorner(rightFrac: 0.95, bottomFrac: 0.95),
+  ),
+  WindowDesign(
+    id: 'sd_10', family: 'Sliding', label: 'SD 10', cols: 4, rows: 2, rowFractions: [0.30, 0.70],
+    // top 4 fixed transoms, bottom [F, slide_L, slide_R, F]. Mesh on rightmost SLIDER (bottom col 3).
+    meshCorner: MeshCorner(rightFrac: 0.74, bottomFrac: 0.95, sizeFrac: 0.10),
+  ),
+  WindowDesign(
+    id: 'sd_63', family: 'Sliding', label: 'SD 63', cols: 2, rows: 2,
+    // Top [slide_R, slide_L], bottom merged fixed. Mesh in top-right slider corner.
+    // Top row is ~70% of inner height; bottom-right of that pane sits at y ~ 0.66.
+    meshCorner: MeshCorner(rightFrac: 0.93, bottomFrac: 0.66, sizeFrac: 0.20),
+  ),
 ];
 
 /// Distinct families in catalog order (drives picker tabs).
@@ -311,9 +388,15 @@ String applyFrameColor(String rawSvg, {String frameColorKey = 'white'}) {
 /// Convenience: returns a ready-to-render SVG string for [design] using the
 /// cache, or a tiny inline fallback if the asset isn't loaded yet. Safe to
 /// call synchronously from build methods after [preloadDesignSvgs] has run.
+///
+/// When [withMesh] is true, a small hatched triangle is overlaid in the
+/// bottom-right corner of the inner glass area to indicate that the design
+/// includes a mesh leaf (3-track slider). Use this when rendering a Sliding
+/// item whose slidingType is '3 Track'.
 String designSvgOrPlaceholder(
   WindowDesign design, {
   String frameColorKey = 'white',
+  bool withMesh = false,
 }) {
   final raw = _rawSvgCache[design.id];
   if (raw == null) {
@@ -324,5 +407,53 @@ String designSvgOrPlaceholder(
         '${design.label}</text>'
         '</svg>';
   }
-  return raw.replaceAll('FRAME_COLOR', frameHex(frameColorKey));
+  final colored = raw.replaceAll('FRAME_COLOR', frameHex(frameColorKey));
+  if (!withMesh) return colored;
+  // Mesh is only meaningful for designs that declare a corner (Sliding).
+  final corner = design.meshCorner;
+  if (corner == null) return colored;
+  return _injectMeshIndicator(colored, corner);
+}
+
+/// Injects a small hatched triangle at the design's declared mesh corner.
+/// The corner position and size are expressed as fractions of the SVG
+/// viewBox so this works regardless of each asset's viewBox dimensions.
+String _injectMeshIndicator(String svg, MeshCorner corner) {
+  // Parse viewBox to know SVG size. Pattern: viewBox="0 0 W H"
+  final vb = RegExp(r'viewBox="0 0 ([\d\.]+) ([\d\.]+)"').firstMatch(svg);
+  if (vb == null) return svg;
+  final w = double.tryParse(vb.group(1)!) ?? 0;
+  final h = double.tryParse(vb.group(2)!) ?? 0;
+  if (w <= 0 || h <= 0) return svg;
+
+  // Triangle corner = (rightFrac * vbW, bottomFrac * vbH). Side is sizeFrac
+  // of vbW, clamped to keep things sensible at small/huge SVGs.
+  final bx = w * corner.rightFrac;
+  final by = h * corner.bottomFrac;
+  final side = (w * corner.sizeFrac).clamp(12.0, 60.0);
+  final tx = bx - side;
+  final ty = by - side;
+
+  // Define a dense hatched pattern + draw a right triangle with hypotenuse
+  // going from (tx, by) up to (bx, ty). Filled twice: a slate backdrop so
+  // the wedge reads as a coloured shape even at thumbnail size, then a
+  // dense diagonal hatch on top to evoke the mesh-screen texture.
+  final patternId = 'mesh_${w.toInt()}_${h.toInt()}';
+  final triPts = '${tx.toStringAsFixed(2)},${by.toStringAsFixed(2)} '
+      '${bx.toStringAsFixed(2)},${by.toStringAsFixed(2)} '
+      '${bx.toStringAsFixed(2)},${ty.toStringAsFixed(2)}';
+  final overlay = StringBuffer()
+    ..write('<defs>')
+    ..write('<pattern id="$patternId" patternUnits="userSpaceOnUse" '
+        'width="1.6" height="1.6" patternTransform="rotate(45)">')
+    ..write('<line x1="0" y1="0" x2="0" y2="1.6" stroke="#1a1a1a" stroke-width="0.9"/>')
+    ..write('</pattern>')
+    ..write('</defs>')
+    ..write('<polygon points="$triPts" fill="#7a8a99" stroke="none"/>')
+    ..write('<polygon points="$triPts" fill="url(#$patternId)" '
+        'stroke="#1a1a1a" stroke-width="0.9"/>');
+
+  final idx = svg.lastIndexOf('</svg>');
+  if (idx < 0) return svg;
+  return '${svg.substring(0, idx)}$overlay${svg.substring(idx)}';
 }

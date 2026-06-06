@@ -65,9 +65,12 @@ class _WindowQuotationScreenState extends State<WindowQuotationScreen> {
         initialWidthMm: savedItem.widthMm,
         initialQty: savedItem.qty,
         initialRate: savedItem.rate,
+        initialItemType: savedItem.itemType,
         initialWindowSeries: savedItem.windowSeries,
         initialDesignId: savedItem.designId,
         initialFrameColor: savedItem.frameColor,
+        initialWidthMode: savedItem.widthMode,
+        initialHeightMode: savedItem.heightMode,
         initialColumnWidthsMm: savedItem.columnWidthsMm,
         initialRowHeightsMm: savedItem.rowHeightsMm,
         initialPanelOptions: savedItem.panelOptions,
@@ -140,6 +143,7 @@ class _WindowQuotationScreenState extends State<WindowQuotationScreen> {
         text: existingItem?.sashOuter.text ?? '');
 
     // Dropdown initial values
+    final initialItemType = existingItem?.itemType ?? 'Window';
     final initialSeries = existingItem?.windowSeries ?? 'Fixed';
     final initialDesignId = existingItem?.designId ?? 'fixed_1';
     final initialFrameColor = existingItem?.frameColor ?? 'white';
@@ -161,6 +165,7 @@ class _WindowQuotationScreenState extends State<WindowQuotationScreen> {
           rateCtrl: rateCtrl,
           glassTypeCtrl: glassTypeCtrl,
           sashOuterCtrl: sashOuterCtrl,
+          initialItemType: initialItemType,
           initialSeries: initialSeries,
           initialDesignId: initialDesignId,
           initialFrameColor: initialFrameColor,
@@ -169,12 +174,15 @@ class _WindowQuotationScreenState extends State<WindowQuotationScreen> {
           initialHandleType: initialHandleType,
           initialLocking: initialLocking,
           initialHinges: initialHinges,
+          initialWidthMode: existingItem?.widthMode ?? 'split',
+          initialHeightMode: existingItem?.heightMode ?? 'split',
           initialColumnWidthsMm: existingItem?.columnWidthsMm ?? const [],
           initialRowHeightsMm: existingItem?.rowHeightsMm ?? const [],
           initialPanelOptions: existingItem?.panelOptions ?? const [],
           onSave: (dialogState) {
             setState(() {
-              final autoDescription = "${dialogState.windowSeries} Window";
+              final autoDescription =
+                  "${dialogState.windowSeries} ${dialogState.itemType}";
               if (isEditing) {
                 // Update the existing item's controllers & fields
                 existingItem!.description.text = autoDescription;
@@ -184,9 +192,20 @@ class _WindowQuotationScreenState extends State<WindowQuotationScreen> {
                 existingItem.rate.text = rateCtrl.text;
                 existingItem.glassType.text = glassTypeCtrl.text;
                 existingItem.sashOuter.text = sashOuterCtrl.text;
+                existingItem.itemType = dialogState.itemType;
                 existingItem.windowSeries = dialogState.windowSeries;
                 existingItem.designId = dialogState.designId;
                 existingItem.frameColor = dialogState.frameColor;
+                existingItem.widthMode = dialogState.widthMode;
+                existingItem.heightMode = dialogState.heightMode;
+                if (dialogState.widthMode == 'total' &&
+                    dialogState.totalWidthMm.isNotEmpty) {
+                  existingItem.widthMm.text = dialogState.totalWidthMm;
+                }
+                if (dialogState.heightMode == 'total' &&
+                    dialogState.totalHeightMm.isNotEmpty) {
+                  existingItem.lengthMm.text = dialogState.totalHeightMm;
+                }
                 existingItem.columnWidthsMm = dialogState.columnWidthsMm;
                 existingItem.rowHeightsMm = dialogState.rowHeightsMm;
                 existingItem.panelOptions = dialogState.panelOptions;
@@ -201,15 +220,24 @@ class _WindowQuotationScreenState extends State<WindowQuotationScreen> {
                 final newItem = WindowQuotationItem(
                   onChanged: () => setState(() {}),
                   initialDescription: autoDescription,
-                  initialLengthMm: lengthCtrl.text,
-                  initialWidthMm: widthCtrl.text,
+                  initialLengthMm: dialogState.heightMode == 'total' &&
+                          dialogState.totalHeightMm.isNotEmpty
+                      ? dialogState.totalHeightMm
+                      : lengthCtrl.text,
+                  initialWidthMm: dialogState.widthMode == 'total' &&
+                          dialogState.totalWidthMm.isNotEmpty
+                      ? dialogState.totalWidthMm
+                      : widthCtrl.text,
                   initialQty: qtyCtrl.text,
                   initialRate: rateCtrl.text,
                   initialGlassType: glassTypeCtrl.text,
                   initialSashOuter: sashOuterCtrl.text,
+                  initialItemType: dialogState.itemType,
                   initialWindowSeries: dialogState.windowSeries,
                   initialDesignId: dialogState.designId,
                   initialFrameColor: dialogState.frameColor,
+                  initialWidthMode: dialogState.widthMode,
+                  initialHeightMode: dialogState.heightMode,
                   initialColumnWidthsMm: dialogState.columnWidthsMm,
                   initialRowHeightsMm: dialogState.rowHeightsMm,
                   initialPanelOptions: dialogState.panelOptions,
@@ -306,9 +334,12 @@ class _WindowQuotationScreenState extends State<WindowQuotationScreen> {
                             qty: item.qty.text,
                             rate: item.rate.text,
                             amount: item.amount,
+                            itemType: item.itemType,
                             windowSeries: item.windowSeries,
                             designId: item.designId,
                             frameColor: item.frameColor,
+                            widthMode: item.widthMode,
+                            heightMode: item.heightMode,
                             columnWidthsMm: item.columnWidthsMm,
                             rowHeightsMm: item.rowHeightsMm,
                             panelOptions: item.panelOptions,
@@ -674,6 +705,8 @@ class _WindowQuotationScreenState extends State<WindowQuotationScreen> {
               designSvgOrPlaceholder(
                 designById(item.designId),
                 frameColorKey: item.frameColor,
+                withMesh: item.windowSeries == 'Sliding' &&
+                    item.slidingType == '3 Track',
               ),
               fit: BoxFit.contain,
             ),
@@ -874,6 +907,7 @@ class WindowQuotationItem {
   final TextEditingController sashOuter = TextEditingController();
 
   // New dropdown values
+  String itemType = 'Window'; // 'Window' or 'Door' - noun used in the PDF
   String windowSeries = 'Fixed'; // family label, derived from chosen design
   String designId = 'fixed_1'; // catalog design key
   String frameColor = 'white'; // 'white' | 'brown' | 'grey' | 'black'
@@ -886,6 +920,14 @@ class WindowQuotationItem {
   // Casement-only (item-level legacy; per-panel overrides live in panelOptions)
   String locking = 'Single Point'; // Single Point, Multi Point
   String hinges = '2D Hinges'; // 2D Hinges, 3D Hinges
+
+  /// 'split' = per-column widths entered; 'total' = single total width
+  /// (stored in widthMm). Defaults to 'split'.
+  String widthMode = 'split';
+
+  /// 'split' = per-row heights entered; 'total' = single total height
+  /// (stored in lengthMm). Defaults to 'split'.
+  String heightMode = 'split';
 
   /// Per-column widths in mm (one per design column). Empty = falls back to
   /// the single legacy widthMm controller value.
@@ -914,6 +956,7 @@ class WindowQuotationItem {
     String? initialWidthMm,
     String? initialQty,
     String? initialRate,
+    String? initialItemType,
     String? initialWindowSeries,
     String? initialDesignId,
     String? initialFrameColor,
@@ -924,6 +967,8 @@ class WindowQuotationItem {
     String? initialHandleType,
     String? initialLocking,
     String? initialHinges,
+    String? initialWidthMode,
+    String? initialHeightMode,
     List<double>? initialColumnWidthsMm,
     List<double>? initialRowHeightsMm,
     List<Map<String, String>>? initialPanelOptions,
@@ -939,6 +984,7 @@ class WindowQuotationItem {
     if (initialRate != null) rate.text = initialRate;
     if (initialGlassType != null) glassType.text = initialGlassType;
     if (initialSashOuter != null) sashOuter.text = initialSashOuter;
+    if (initialItemType != null) itemType = initialItemType;
     if (initialWindowSeries != null) windowSeries = initialWindowSeries;
     if (initialDesignId != null) designId = initialDesignId;
     if (initialFrameColor != null) frameColor = initialFrameColor;
@@ -947,6 +993,8 @@ class WindowQuotationItem {
     if (initialHandleType != null) handleType = initialHandleType;
     if (initialLocking != null) locking = initialLocking;
     if (initialHinges != null) hinges = initialHinges;
+    if (initialWidthMode != null) widthMode = initialWidthMode;
+    if (initialHeightMode != null) heightMode = initialHeightMode;
     if (initialColumnWidthsMm != null && initialColumnWidthsMm.isNotEmpty) {
       columnWidthsMm = List<double>.from(initialColumnWidthsMm);
     }
@@ -967,27 +1015,31 @@ class WindowQuotationItem {
     double q = double.tryParse(qty.text) ?? 1;
     double r = double.tryParse(rate.text) ?? 0;
 
-    double totalMm2 = 0;
-    if (columnWidthsMm.isNotEmpty && rowHeightsMm.isNotEmpty) {
-      // Sum over the grid: every (col, row) pane contributes width*height.
-      for (final h in rowHeightsMm) {
-        for (final w in columnWidthsMm) {
-          totalMm2 += w * h;
-        }
-      }
-      // Keep legacy length/width controllers in sync with totals for any
-      // older code paths (PDF heading text, etc.) that still read them.
-      final totalW = columnWidthsMm.reduce((a, b) => a + b);
-      final totalH = rowHeightsMm.reduce((a, b) => a + b);
-      lengthMm.text = totalH.toStringAsFixed(0);
+    // Resolve effective total width and height based on each axis's mode.
+    double totalW;
+    if (widthMode == 'total') {
+      totalW = double.tryParse(widthMm.text) ?? 0;
+    } else if (columnWidthsMm.isNotEmpty) {
+      totalW = columnWidthsMm.fold<double>(0, (a, b) => a + b);
+      // Keep legacy widthMm controller in sync.
       widthMm.text = totalW.toStringAsFixed(0);
     } else {
-      // Legacy single-pane path.
-      final l = double.tryParse(lengthMm.text) ?? 0;
-      final w = double.tryParse(widthMm.text) ?? 0;
-      totalMm2 = l * w;
+      totalW = double.tryParse(widthMm.text) ?? 0;
     }
-    areaSqft = totalMm2 / _sqmmPerSqft;
+
+    double totalH;
+    if (heightMode == 'total') {
+      totalH = double.tryParse(lengthMm.text) ?? 0;
+    } else if (rowHeightsMm.isNotEmpty) {
+      totalH = rowHeightsMm.fold<double>(0, (a, b) => a + b);
+      lengthMm.text = totalH.toStringAsFixed(0);
+    } else {
+      totalH = double.tryParse(lengthMm.text) ?? 0;
+    }
+
+    // Area = total_w x total_h (treats the whole unit as a single rectangle,
+    // per the user's chosen convention even when an axis is split).
+    areaSqft = (totalW * totalH) / _sqmmPerSqft;
     amount = areaSqft * q * r;
     onChanged();
   }
@@ -1023,6 +1075,7 @@ class _DecimalTextInputFormatter extends TextInputFormatter {
 
 /// Carries dropdown values from the dialog back to the parent on save.
 class _DialogDropdownState {
+  final String itemType;
   final String windowSeries;
   final String designId;
   final String frameColor;
@@ -1031,11 +1084,16 @@ class _DialogDropdownState {
   final String handleType;
   final String locking;
   final String hinges;
+  final String widthMode;
+  final String heightMode;
+  final String totalWidthMm;
+  final String totalHeightMm;
   final List<double> columnWidthsMm;
   final List<double> rowHeightsMm;
   final List<Map<String, String>> panelOptions;
 
   _DialogDropdownState({
+    required this.itemType,
     required this.windowSeries,
     required this.designId,
     required this.frameColor,
@@ -1044,6 +1102,10 @@ class _DialogDropdownState {
     required this.handleType,
     required this.locking,
     required this.hinges,
+    required this.widthMode,
+    required this.heightMode,
+    required this.totalWidthMm,
+    required this.totalHeightMm,
     required this.columnWidthsMm,
     required this.rowHeightsMm,
     required this.panelOptions,
@@ -1062,6 +1124,7 @@ class _WindowItemDialog extends StatefulWidget {
   final TextEditingController glassTypeCtrl;
   final TextEditingController sashOuterCtrl;
 
+  final String initialItemType;
   final String initialSeries;
   final String initialDesignId;
   final String initialFrameColor;
@@ -1070,6 +1133,8 @@ class _WindowItemDialog extends StatefulWidget {
   final String initialHandleType;
   final String initialLocking;
   final String initialHinges;
+  final String initialWidthMode;
+  final String initialHeightMode;
   final List<double> initialColumnWidthsMm;
   final List<double> initialRowHeightsMm;
   final List<Map<String, String>> initialPanelOptions;
@@ -1085,6 +1150,7 @@ class _WindowItemDialog extends StatefulWidget {
     required this.rateCtrl,
     required this.glassTypeCtrl,
     required this.sashOuterCtrl,
+    required this.initialItemType,
     required this.initialSeries,
     required this.initialDesignId,
     required this.initialFrameColor,
@@ -1093,6 +1159,8 @@ class _WindowItemDialog extends StatefulWidget {
     required this.initialHandleType,
     required this.initialLocking,
     required this.initialHinges,
+    required this.initialWidthMode,
+    required this.initialHeightMode,
     required this.initialColumnWidthsMm,
     required this.initialRowHeightsMm,
     required this.initialPanelOptions,
@@ -1110,6 +1178,7 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
   double _areaSqft = 0.0;
   double _amount = 0.0;
 
+  late String _itemType;
   late String _windowSeries;
   late String _designId;
   late String _frameColor;
@@ -1125,6 +1194,14 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
   /// Per-row height controllers (length = design.rows)
   late List<TextEditingController> _heightCtrls;
 
+  /// 'split' or 'total' per axis.
+  late String _widthMode;
+  late String _heightMode;
+
+  /// Single-field controllers used when the corresponding axis is in 'total' mode.
+  final TextEditingController _totalWidthCtrl = TextEditingController();
+  final TextEditingController _totalHeightCtrl = TextEditingController();
+
   /// Per-panel option maps, flat row-major (length = rows*cols). Currently
   /// always empty arrays — kept on the model for forward compatibility with
   /// designs that vary by panel kind in a future iteration.
@@ -1133,6 +1210,7 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
   @override
   void initState() {
     super.initState();
+    _itemType = widget.initialItemType;
     _windowSeries = widget.initialSeries;
     _designId = widget.initialDesignId;
     _frameColor = widget.initialFrameColor;
@@ -1141,8 +1219,17 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
     _handleType = widget.initialHandleType;
     _locking = widget.initialLocking;
     _hinges = widget.initialHinges;
+    _widthMode = widget.initialWidthMode;
+    _heightMode = widget.initialHeightMode;
 
     _initDimensionControllers();
+
+    // Seed total ctrls from existing legacy total values (widthCtrl/lengthCtrl
+    // are pre-populated by the caller for editing).
+    _totalWidthCtrl.text = widget.widthCtrl.text;
+    _totalHeightCtrl.text = widget.lengthCtrl.text;
+    _totalWidthCtrl.addListener(_recalculate);
+    _totalHeightCtrl.addListener(_recalculate);
 
     _recalculate();
     widget.qtyCtrl.addListener(_recalculate);
@@ -1235,6 +1322,8 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
     for (final c in _heightCtrls) {
       c.dispose();
     }
+    _totalWidthCtrl.dispose();
+    _totalHeightCtrl.dispose();
     super.dispose();
   }
 
@@ -1243,24 +1332,90 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
   List<double> _heights() =>
       _heightCtrls.map((c) => double.tryParse(c.text) ?? 0).toList();
 
-  void _recalculate() {
-    final widths = _widths();
-    final heights = _heights();
-    final q = double.tryParse(widget.qtyCtrl.text) ?? 1;
-    final r = double.tryParse(widget.rateCtrl.text) ?? 0;
-    double totalMm2 = 0;
-    for (final h in heights) {
-      for (final w in widths) {
-        totalMm2 += w * h;
+  /// True when the width axis is effectively 'total': either the user
+  /// explicitly chose 'total', or the design has only 1 column (no split
+  /// distinction possible, so the UI shows the single total field).
+  bool get _widthIsTotal {
+    final design = designById(_designId);
+    return _widthMode == 'total' || design.cols <= 1;
+  }
+
+  bool get _heightIsTotal {
+    final design = designById(_designId);
+    return _heightMode == 'total' || design.rows <= 1;
+  }
+
+  /// Effective total width — sum of split widths in 'split' mode, else
+  /// directly from the total controller in 'total' mode.
+  double _totalWidth() {
+    if (_widthIsTotal) {
+      return double.tryParse(_totalWidthCtrl.text) ?? 0;
+    }
+    return _widths().fold<double>(0, (a, b) => a + b);
+  }
+
+  /// Effective total height — sum of split heights in 'split' mode, else
+  /// directly from the total controller in 'total' mode.
+  double _totalHeight() {
+    if (_heightIsTotal) {
+      return double.tryParse(_totalHeightCtrl.text) ?? 0;
+    }
+    return _heights().fold<double>(0, (a, b) => a + b);
+  }
+
+  /// Switches the width axis between 'split' and 'total'. When the user
+  /// changes mode mid-entry, prefill the destination so no data is lost:
+  ///   split -> total: total = sum of splits
+  ///   total -> split: each split = total / N
+  void _setWidthMode(String mode) {
+    if (mode == _widthMode) return;
+    if (mode == 'total') {
+      final sum = _widths().fold<double>(0, (a, b) => a + b);
+      if (sum > 0) _totalWidthCtrl.text = sum.toStringAsFixed(0);
+    } else {
+      final total = double.tryParse(_totalWidthCtrl.text) ?? 0;
+      if (total > 0 && _widthCtrls.isNotEmpty) {
+        final share = total / _widthCtrls.length;
+        for (final c in _widthCtrls) {
+          c.text = share.toStringAsFixed(0);
+        }
       }
     }
+    setState(() => _widthMode = mode);
+    _recalculate();
+  }
+
+  void _setHeightMode(String mode) {
+    if (mode == _heightMode) return;
+    if (mode == 'total') {
+      final sum = _heights().fold<double>(0, (a, b) => a + b);
+      if (sum > 0) _totalHeightCtrl.text = sum.toStringAsFixed(0);
+    } else {
+      final total = double.tryParse(_totalHeightCtrl.text) ?? 0;
+      if (total > 0 && _heightCtrls.isNotEmpty) {
+        final share = total / _heightCtrls.length;
+        for (final c in _heightCtrls) {
+          c.text = share.toStringAsFixed(0);
+        }
+      }
+    }
+    setState(() => _heightMode = mode);
+    _recalculate();
+  }
+
+  void _recalculate() {
+    final q = double.tryParse(widget.qtyCtrl.text) ?? 1;
+    final r = double.tryParse(widget.rateCtrl.text) ?? 0;
+    final totalW = _totalWidth();
+    final totalH = _totalHeight();
+    // Treat the unit as a single rectangle - area = totalW * totalH.
+    final totalMm2 = totalW * totalH;
     setState(() {
       _areaSqft = totalMm2 / _sqmmPerSqft;
       _amount = _areaSqft * q * r;
     });
-    // Sync legacy lengthCtrl/widthCtrl with totals so other code paths keep working.
-    final totalW = widths.fold<double>(0, (a, b) => a + b);
-    final totalH = heights.fold<double>(0, (a, b) => a + b);
+    // Sync legacy lengthCtrl/widthCtrl with the effective totals so the PDF
+    // and other code paths that read those strings still work in both modes.
     if (totalW > 0) widget.widthCtrl.text = totalW.toStringAsFixed(0);
     if (totalH > 0) widget.lengthCtrl.text = totalH.toStringAsFixed(0);
   }
@@ -1290,31 +1445,57 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
       return;
     }
 
-    // 3. Validate per-column widths
-    final widths = _widths();
-    for (var i = 0; i < widths.length; i++) {
-      if (widths[i] <= 0) {
+    // 3. Validate widths - mode-aware
+    if (_widthIsTotal) {
+      final totalW = double.tryParse(_totalWidthCtrl.text) ?? 0;
+      if (totalW <= 0) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Please enter width for panel ${i + 1}'),
+          const SnackBar(
+            content: Text('Please enter total width'),
             backgroundColor: Colors.red,
           ),
         );
         return;
       }
+    } else {
+      final widths = _widths();
+      for (var i = 0; i < widths.length; i++) {
+        if (widths[i] <= 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Please enter width for panel ${i + 1}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+      }
     }
 
-    // 4. Validate per-row heights
-    final heights = _heights();
-    for (var i = 0; i < heights.length; i++) {
-      if (heights[i] <= 0) {
+    // 4. Validate heights - mode-aware
+    if (_heightIsTotal) {
+      final totalH = double.tryParse(_totalHeightCtrl.text) ?? 0;
+      if (totalH <= 0) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Please enter height for row ${i + 1}'),
+          const SnackBar(
+            content: Text('Please enter total height'),
             backgroundColor: Colors.red,
           ),
         );
         return;
+      }
+    } else {
+      final heights = _heights();
+      for (var i = 0; i < heights.length; i++) {
+        if (heights[i] <= 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Please enter height for row ${i + 1}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
       }
     }
 
@@ -1363,6 +1544,7 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
     }
 
     widget.onSave(_DialogDropdownState(
+      itemType: _itemType,
       windowSeries: _windowSeries,
       designId: _designId,
       frameColor: _frameColor,
@@ -1371,6 +1553,14 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
       handleType: _handleType,
       locking: _locking,
       hinges: _hinges,
+      // Pass the EFFECTIVE mode so designs with a single col/row (no toggle
+      // shown) are persisted as 'total' - matching how the dialog actually
+      // treated them. Without this the item-side updateAmount would look at
+      // an empty per-cell list and end up with 0 area.
+      widthMode: _widthIsTotal ? 'total' : 'split',
+      heightMode: _heightIsTotal ? 'total' : 'split',
+      totalWidthMm: _totalWidthCtrl.text,
+      totalHeightMm: _totalHeightCtrl.text,
       columnWidthsMm: _widths(),
       rowHeightsMm: _heights(),
       panelOptions: _panelOptions
@@ -1443,6 +1633,38 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
                         }
                       },
                     ),
+                    const SizedBox(height: 16),
+
+                    // ── Item Type toggle: Window vs Door ──
+                    Row(
+                      children: [
+                        Text("Item type:",
+                            style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey.shade700)),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: SegmentedButton<String>(
+                            segments: const [
+                              ButtonSegment(
+                                value: 'Window',
+                                label: Text('Window'),
+                                icon: Icon(Icons.window_rounded),
+                              ),
+                              ButtonSegment(
+                                value: 'Door',
+                                label: Text('Door'),
+                                icon: Icon(Icons.door_front_door_rounded),
+                              ),
+                            ],
+                            selected: {_itemType},
+                            onSelectionChanged: (s) =>
+                                setState(() => _itemType = s.first),
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 20),
 
                     // ── Common: GI, Glass Type, Sash/Outer ──
@@ -1499,6 +1721,12 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
                       frameColor: _frameColor,
                       widthCtrls: _widthCtrls,
                       heightCtrls: _heightCtrls,
+                      widthMode: _widthMode,
+                      heightMode: _heightMode,
+                      totalWidthCtrl: _totalWidthCtrl,
+                      totalHeightCtrl: _totalHeightCtrl,
+                      onWidthModeChanged: _setWidthMode,
+                      onHeightModeChanged: _setHeightMode,
                     ),
                     const SizedBox(height: 16),
 
@@ -1810,18 +2038,36 @@ class _DimensionsEditor extends StatelessWidget {
   final String frameColor;
   final List<TextEditingController> widthCtrls;
   final List<TextEditingController> heightCtrls;
+  final String widthMode; // 'split' | 'total'
+  final String heightMode;
+  final TextEditingController totalWidthCtrl;
+  final TextEditingController totalHeightCtrl;
+  final ValueChanged<String> onWidthModeChanged;
+  final ValueChanged<String> onHeightModeChanged;
 
   const _DimensionsEditor({
     required this.design,
     required this.frameColor,
     required this.widthCtrls,
     required this.heightCtrls,
+    required this.widthMode,
+    required this.heightMode,
+    required this.totalWidthCtrl,
+    required this.totalHeightCtrl,
+    required this.onWidthModeChanged,
+    required this.onHeightModeChanged,
   });
 
   @override
   Widget build(BuildContext context) {
     final svg = designSvgOrPlaceholder(design, frameColorKey: frameColor);
     const diagramHeight = 320.0;
+    // For single-row / single-col designs the toggle is unnecessary, but
+    // we keep it visible so the form looks consistent and the user can
+    // still pick (Split == Total in that case).
+    final showWidthToggle = design.cols > 1;
+    final showHeightToggle = design.rows > 1;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1835,44 +2081,105 @@ class _DimensionsEditor extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            // Per-row height fields stacked vertically.
+            // Right column: height-mode toggle + height inputs.
             SizedBox(
-              width: 110,
+              width: 130,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  for (var r = 0; r < design.rows; r++) ...[
-                    _LabeledNumberField(
-                      controller: heightCtrls[r],
-                      label: design.rows == 1
-                          ? 'Height (mm)'
-                          : 'Row ${r + 1} ht (mm)',
+                  if (showHeightToggle) ...[
+                    _ModeToggle(
+                      label: 'Height',
+                      value: heightMode,
+                      onChanged: onHeightModeChanged,
                     ),
-                    if (r != design.rows - 1) const SizedBox(height: 8),
+                    const SizedBox(height: 8),
                   ],
+                  if (heightMode == 'total' || !showHeightToggle)
+                    _LabeledNumberField(
+                      controller: totalHeightCtrl,
+                      label: 'Total height (mm)',
+                    )
+                  else
+                    for (var r = 0; r < design.rows; r++) ...[
+                      _LabeledNumberField(
+                        controller: heightCtrls[r],
+                        label: 'Row ${r + 1} ht (mm)',
+                      ),
+                      if (r != design.rows - 1) const SizedBox(height: 8),
+                    ],
                 ],
               ),
             ),
           ],
         ),
-        const SizedBox(height: 8),
-        // Per-column width fields.
-        Row(
-          children: [
-            for (var c = 0; c < design.cols; c++) ...[
+        const SizedBox(height: 12),
+        // Width toggle (only if design has > 1 col).
+        if (showWidthToggle) ...[
+          Row(
+            children: [
+              Text('Width:',
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade700)),
+              const SizedBox(width: 8),
               Expanded(
-                child: _LabeledNumberField(
-                  controller: widthCtrls[c],
-                  label: design.cols == 1
-                      ? 'Width (mm)'
-                      : 'Panel ${c + 1} wd (mm)',
+                child: _ModeToggle(
+                  value: widthMode,
+                  onChanged: onWidthModeChanged,
                 ),
               ),
-              if (c != design.cols - 1) const SizedBox(width: 8),
             ],
-          ],
-        ),
+          ),
+          const SizedBox(height: 8),
+        ],
+        // Width fields - split row OR single total field.
+        if (widthMode == 'total' || !showWidthToggle)
+          _LabeledNumberField(
+            controller: totalWidthCtrl,
+            label: 'Total width (mm)',
+          )
+        else
+          Row(
+            children: [
+              for (var c = 0; c < design.cols; c++) ...[
+                Expanded(
+                  child: _LabeledNumberField(
+                    controller: widthCtrls[c],
+                    label: 'Panel ${c + 1} wd (mm)',
+                  ),
+                ),
+                if (c != design.cols - 1) const SizedBox(width: 8),
+              ],
+            ],
+          ),
       ],
+    );
+  }
+}
+
+/// Small Split/Total segmented control used per axis.
+class _ModeToggle extends StatelessWidget {
+  final String? label;
+  final String value; // 'split' or 'total'
+  final ValueChanged<String> onChanged;
+  const _ModeToggle({this.label, required this.value, required this.onChanged});
+  @override
+  Widget build(BuildContext context) {
+    return SegmentedButton<String>(
+      style: SegmentedButton.styleFrom(
+        textStyle: const TextStyle(fontSize: 11),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      ),
+      showSelectedIcon: false,
+      segments: const [
+        ButtonSegment(value: 'split', label: Text('Split')),
+        ButtonSegment(value: 'total', label: Text('Total')),
+      ],
+      selected: {value},
+      onSelectionChanged: (s) => onChanged(s.first),
     );
   }
 }
