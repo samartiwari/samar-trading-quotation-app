@@ -1359,6 +1359,15 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
     _designId = newDesignId;
     _frameColor = newFrameColor;
     _windowSeries = newDesign.family;
+    // Auto-align item type with families that have a natural mapping. Keep
+    // the user's existing choice for regular window families (Fixed, Casement,
+    // Sliding etc.) so they can still flip Window <-> Door manually.
+    if (newDesign.family == 'Door') {
+      _itemType = 'Door';
+    } else if (newDesign.family == 'Combination' ||
+        newDesign.family == 'DW') {
+      _itemType = 'Combination';
+    }
     _recalculate();
   }
 
