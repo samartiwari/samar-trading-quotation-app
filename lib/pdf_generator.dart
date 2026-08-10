@@ -1662,11 +1662,15 @@ class PdfGenerator {
                             if (item.sashOuter.text.isNotEmpty)
                               _descRow('Sash / Outer', item.sashOuter.text),
                             if (item.windowSeries == 'Casement' ||
-                                item.windowSeries == 'Casement (Georgian Bar)') ...[
+                                item.windowSeries == 'Casement (Georgian Bar)' ||
+                                item.windowSeries == 'Door' ||
+                                item.windowSeries == 'DW' ||
+                                item.windowSeries == 'Combination') ...[
                               _descRow('Locking', item.locking),
                               _descRow('Hinges', item.hinges),
                             ],
-                            if (item.windowSeries == 'Sliding') ...[
+                            if (item.windowSeries == 'Sliding' ||
+                                item.windowSeries == 'Combination') ...[
                               _descRow('Sliding Type', item.slidingType),
                               _descRow('Handle Type', item.handleType),
                             ],

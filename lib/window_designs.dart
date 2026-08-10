@@ -55,6 +55,20 @@ class WindowDesign {
   /// slider leaf (not on an adjacent fixed pane).
   final MeshCorner? meshCorner;
 
+  /// Which cells of the cols×rows grid are actually filled with glass/frame.
+  /// Row-major (`cellsFilled[row][col]`). When null, every cell counts (the
+  /// default). Use this when a design leaves part of the bounding rectangle
+  /// empty (e.g. CMB 1's bottom-right corner has no window there) so the
+  /// area math skips that empty region.
+  final List<List<bool>>? cellsFilled;
+
+  /// When true, the dimensions form hides the Split/Total toggle and forces
+  /// per-cell (Split) input. Use for designs whose layout requires the user
+  /// to specify each row/column individually (e.g. CMB 1's asymmetric
+  /// door + shorter side unit) - a single total would ambiguously distribute
+  /// across cells and break the area calc.
+  final bool lockSplit;
+
   const WindowDesign({
     required this.id,
     required this.family,
@@ -64,7 +78,20 @@ class WindowDesign {
     this.colFractions,
     this.rowFractions,
     this.meshCorner,
+    this.cellsFilled,
+    this.lockSplit = false,
   });
+
+  /// True if the given (row, col) cell contributes to the item's area. Cells
+  /// outside the declared grid, or explicitly false in `cellsFilled`, are
+  /// treated as empty.
+  bool cellFilled(int row, int col) {
+    if (cellsFilled == null) return true;
+    if (row < 0 || row >= cellsFilled!.length) return false;
+    final r = cellsFilled![row];
+    if (col < 0 || col >= r.length) return false;
+    return r[col];
+  }
 
   String get assetPath => 'assets/windows/$id.svg';
 }
@@ -132,7 +159,7 @@ const List<WindowDesign> kWindowDesigns = [
   ),
   WindowDesign(id: 'fixed_19', family: 'Fixed', label: 'Fixed 19', cols: 2, rows: 1),
   WindowDesign(id: 'fixed_20', family: 'Fixed', label: 'Fixed 20', cols: 2, rows: 2),
-  WindowDesign(id: 'fixed_21', family: 'Fixed', label: 'Fixed 21', cols: 1, rows: 2),
+  WindowDesign(id: 'fixed_21', family: 'Fixed', label: 'Fixed 21', cols: 1, rows: 3),
   WindowDesign(
     id: 'fixed_22',
     family: 'Fixed', label: 'Fixed 22',
@@ -283,9 +310,10 @@ const List<WindowDesign> kWindowDesigns = [
     meshCorner: MeshCorner(rightFrac: 0.74, bottomFrac: 0.95, sizeFrac: 0.12),
   ),
   WindowDesign(
-    id: 'sd_5', family: 'Sliding', label: 'SD 5', cols: 2, rows: 1,
-    // [slide_L, F] - the slider is the LEFT pane (col 1 of 2).
-    meshCorner: MeshCorner(rightFrac: 0.50, bottomFrac: 0.95, sizeFrac: 0.20),
+    id: 'sd_5', family: 'Sliding', label: 'SD 5', cols: 3, rows: 1,
+    // [slide_R, slide_R, F] - two sliders on the left, fixed on the right.
+    // Mesh corner sits on the rightmost slider (col 2 of 3).
+    meshCorner: MeshCorner(rightFrac: 0.67, bottomFrac: 0.95, sizeFrac: 0.14),
   ),
   WindowDesign(
     id: 'sd_7', family: 'Sliding', label: 'SD 7', cols: 4, rows: 1,
@@ -312,6 +340,74 @@ const List<WindowDesign> kWindowDesigns = [
     // Top [slide_R, slide_L], bottom merged fixed. Mesh in top-right slider corner.
     // Top row is ~70% of inner height; bottom-right of that pane sits at y ~ 0.66.
     meshCorner: MeshCorner(rightFrac: 0.93, bottomFrac: 0.66, sizeFrac: 0.20),
+  ),
+
+  // Door family - casement (side-hinged) doors. Portrait aspect; vertex on the
+  // handle/swinging edge, hinges on the opposite side.
+  WindowDesign(id: 'door_1', family: 'Door', label: 'Door 1', cols: 1, rows: 1),
+  WindowDesign(
+    id: 'door_2', family: 'Door', label: 'Door 2',
+    cols: 1, rows: 2, rowFractions: [0.18, 0.82],
+  ),
+  WindowDesign(
+    id: 'door_3', family: 'Door', label: 'Door 3',
+    // Fixed sidelight (left, narrower) + casement door leaf (right, wider).
+    cols: 2, rows: 1, colFractions: [0.4, 0.6],
+  ),
+  WindowDesign(
+    id: 'door_4', family: 'Door', label: 'Door 4',
+    // 2x2: top row fixed+fixed transom, bottom-left fixed sidelight, bottom-right
+    // casement door leaf. Sidelight is narrower than the door.
+    cols: 2, rows: 2, colFractions: [0.4, 0.6], rowFractions: [0.18, 0.82],
+  ),
+  WindowDesign(id: 'door_5', family: 'Door', label: 'Door 5', cols: 2, rows: 1),
+  WindowDesign(
+    id: 'door_6', family: 'Door', label: 'Door 6',
+    cols: 2, rows: 2, rowFractions: [0.18, 0.82],
+  ),
+
+  // DW family - Door+Window combinations (casement door + sliding/fixed window
+  // in a single frame). Show BOTH casement + sliding option sections.
+  WindowDesign(
+    id: 'dw_36', family: 'DW', label: 'DW 36',
+    // Top row: 6 fixed transoms. Bottom row: F F C C F F (a centre pair of
+    // casement leaves flanked by two fixed panes on each side). No sliders.
+    cols: 6, rows: 2,
+    rowFractions: [0.22, 0.78],
+  ),
+  WindowDesign(
+    id: 'dw_36_a', family: 'DW', label: 'DW 36-A',
+    // DW 36 without the top transom row -> just the 6-pane bottom band.
+    cols: 6, rows: 1,
+  ),
+  WindowDesign(
+    id: 'dw_36_b', family: 'DW', label: 'DW 36-B',
+    // DW 36 with the extreme columns removed from BOTH rows -> a 4-col unit.
+    // Top row: F F F F. Bottom row: F C C F.
+    cols: 4, rows: 2,
+    rowFractions: [0.22, 0.78],
+  ),
+
+  // Combination family - designs that mix multiple product types in one unit
+  // (e.g. a casement door alongside a sliding window).
+  WindowDesign(
+    id: 'cmb_1',
+    family: 'Combination',
+    label: 'CMB 1',
+    // Left = casement door (full height), right = slider-fixed-slider (shorter,
+    // sitting at the top of the right side with empty space below).
+    // 2x2 grid so the form asks for: door width + right-unit width, and
+    // right-unit height (top row) + door-only remaining height (bottom row).
+    // Bottom-right cell is empty (the gap under the shorter right unit) - so
+    // its area doesn't count toward the total.
+    cols: 2, rows: 2,
+    cellsFilled: [
+      [true, true],   // top row:    door top      + right unit
+      [true, false],  // bottom row: door bottom   + empty gap
+    ],
+    // Force per-cell dimension input so the user can't accidentally give a
+    // single overall width/height and lose the door-vs-right-unit split.
+    lockSplit: true,
   ),
 ];
 

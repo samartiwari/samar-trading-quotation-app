@@ -181,8 +181,14 @@ class _WindowQuotationScreenState extends State<WindowQuotationScreen> {
           initialPanelOptions: existingItem?.panelOptions ?? const [],
           onSave: (dialogState) {
             setState(() {
+              // If the family already conveys the item nature (Combination
+              // series + Combination item), avoid a repetitive "Combination
+              // Combination" description.
               final autoDescription =
-                  "${dialogState.windowSeries} ${dialogState.itemType}";
+                  (dialogState.windowSeries == 'Combination' &&
+                          dialogState.itemType == 'Combination')
+                      ? 'Combination'
+                      : "${dialogState.windowSeries} ${dialogState.itemType}";
               if (isEditing) {
                 // Update the existing item's controllers & fields
                 existingItem!.description.text = autoDescription;
@@ -705,8 +711,9 @@ class _WindowQuotationScreenState extends State<WindowQuotationScreen> {
               designSvgOrPlaceholder(
                 designById(item.designId),
                 frameColorKey: item.frameColor,
-                withMesh: item.windowSeries == 'Sliding' &&
-                    item.slidingType == '3 Track',
+                withMesh: (item.windowSeries == 'Sliding' ||
+                          item.windowSeries == 'Combination') &&
+                      item.slidingType == '3 Track',
               ),
               fit: BoxFit.contain,
             ),
@@ -1037,11 +1044,52 @@ class WindowQuotationItem {
       totalH = double.tryParse(lengthMm.text) ?? 0;
     }
 
-    // Area = total_w x total_h (treats the whole unit as a single rectangle,
-    // per the user's chosen convention even when an axis is split).
-    areaSqft = (totalW * totalH) / _sqmmPerSqft;
+    // For designs with a partial-cell grid (e.g. CMB 1's shorter right unit
+    // leaves the bottom-right cell empty), sum only the filled cells so the
+    // empty region isn't over-counted. Fall back to totalW x totalH for
+    // regular designs.
+    final design = designById(designId);
+    double totalMm2 = 0;
+    if (design.cellsFilled != null) {
+      final cw = _effectiveColWidths(design, totalW);
+      final rh = _effectiveRowHeights(design, totalH);
+      for (var r = 0; r < design.rows; r++) {
+        for (var c = 0; c < design.cols; c++) {
+          if (design.cellFilled(r, c)) totalMm2 += cw[c] * rh[r];
+        }
+      }
+    } else {
+      totalMm2 = totalW * totalH;
+    }
+    areaSqft = totalMm2 / _sqmmPerSqft;
     amount = areaSqft * q * r;
     onChanged();
+  }
+
+  /// Returns the per-column widths in mm to use for cell-level area math.
+  /// Uses actual entered per-column values when available, otherwise
+  /// distributes the effective totalW across columns using colFractions
+  /// (or equal shares when no fractions declared).
+  List<double> _effectiveColWidths(WindowDesign design, double totalW) {
+    if (columnWidthsMm.length == design.cols &&
+        columnWidthsMm.every((v) => v > 0)) {
+      return List<double>.from(columnWidthsMm);
+    }
+    final f = design.colFractions ??
+        List.filled(design.cols, 1.0 / design.cols);
+    final sum = f.reduce((a, b) => a + b);
+    return [for (final fr in f) totalW * (fr / sum)];
+  }
+
+  List<double> _effectiveRowHeights(WindowDesign design, double totalH) {
+    if (rowHeightsMm.length == design.rows &&
+        rowHeightsMm.every((v) => v > 0)) {
+      return List<double>.from(rowHeightsMm);
+    }
+    final f = design.rowFractions ??
+        List.filled(design.rows, 1.0 / design.rows);
+    final sum = f.reduce((a, b) => a + b);
+    return [for (final fr in f) totalH * (fr / sum)];
   }
 
   void dispose() {
@@ -1337,11 +1385,14 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
   /// distinction possible, so the UI shows the single total field).
   bool get _widthIsTotal {
     final design = designById(_designId);
+    // Locked-split designs are always in split mode - no total override.
+    if (design.lockSplit) return false;
     return _widthMode == 'total' || design.cols <= 1;
   }
 
   bool get _heightIsTotal {
     final design = designById(_designId);
+    if (design.lockSplit) return false;
     return _heightMode == 'total' || design.rows <= 1;
   }
 
@@ -1408,8 +1459,23 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
     final r = double.tryParse(widget.rateCtrl.text) ?? 0;
     final totalW = _totalWidth();
     final totalH = _totalHeight();
-    // Treat the unit as a single rectangle - area = totalW * totalH.
-    final totalMm2 = totalW * totalH;
+    // Designs with a partial-cell grid (e.g. CMB 1) skip empty cells so the
+    // gap under a shorter sub-unit isn't billed. Everything else uses the
+    // rectangle math.
+    final design = designById(_designId);
+    double totalMm2;
+    if (design.cellsFilled != null) {
+      final cw = _cellWidths(design, totalW);
+      final rh = _cellHeights(design, totalH);
+      totalMm2 = 0;
+      for (var rr = 0; rr < design.rows; rr++) {
+        for (var cc = 0; cc < design.cols; cc++) {
+          if (design.cellFilled(rr, cc)) totalMm2 += cw[cc] * rh[rr];
+        }
+      }
+    } else {
+      totalMm2 = totalW * totalH;
+    }
     setState(() {
       _areaSqft = totalMm2 / _sqmmPerSqft;
       _amount = _areaSqft * q * r;
@@ -1418,6 +1484,24 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
     // and other code paths that read those strings still work in both modes.
     if (totalW > 0) widget.widthCtrl.text = totalW.toStringAsFixed(0);
     if (totalH > 0) widget.lengthCtrl.text = totalH.toStringAsFixed(0);
+  }
+
+  List<double> _cellWidths(WindowDesign design, double totalW) {
+    final w = _widths();
+    if (w.length == design.cols && w.every((v) => v > 0)) return w;
+    final f = design.colFractions ??
+        List.filled(design.cols, 1.0 / design.cols);
+    final sum = f.reduce((a, b) => a + b);
+    return [for (final fr in f) totalW * (fr / sum)];
+  }
+
+  List<double> _cellHeights(WindowDesign design, double totalH) {
+    final h = _heights();
+    if (h.length == design.rows && h.every((v) => v > 0)) return h;
+    final f = design.rowFractions ??
+        List.filled(design.rows, 1.0 / design.rows);
+    final sum = f.reduce((a, b) => a + b);
+    return [for (final fr in f) totalH * (fr / sum)];
   }
 
   void _handleSave() {
@@ -1657,6 +1741,11 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
                                 label: Text('Door'),
                                 icon: Icon(Icons.door_front_door_rounded),
                               ),
+                              ButtonSegment(
+                                value: 'Combination',
+                                label: Text('Combo'),
+                                icon: Icon(Icons.dashboard_rounded),
+                              ),
                             ],
                             selected: {_itemType},
                             onSelectionChanged: (s) =>
@@ -1732,7 +1821,10 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
 
                     // ── Casement options (shown for Casement + Casement Georgian Bar designs) ──
                     if (designById(_designId).family == 'Casement' ||
-                        designById(_designId).family == 'Casement (Georgian Bar)') ...[
+                        designById(_designId).family == 'Casement (Georgian Bar)' ||
+                        designById(_designId).family == 'Door' ||
+                        designById(_designId).family == 'DW' ||
+                        designById(_designId).family == 'Combination') ...[
                       _sectionLabel("Casement Options"),
                       const SizedBox(height: 10),
                       Row(
@@ -1776,7 +1868,8 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
                     ],
 
                     // ── Sliding options (only shown when a Sliding design is picked) ──
-                    if (designById(_designId).family == 'Sliding') ...[
+                    if (designById(_designId).family == 'Sliding' ||
+                        designById(_designId).family == 'Combination') ...[
                       _sectionLabel("Sliding Options"),
                       const SizedBox(height: 10),
                       Row(
@@ -2065,8 +2158,20 @@ class _DimensionsEditor extends StatelessWidget {
     // For single-row / single-col designs the toggle is unnecessary, but
     // we keep it visible so the form looks consistent and the user can
     // still pick (Split == Total in that case).
-    final showWidthToggle = design.cols > 1;
-    final showHeightToggle = design.rows > 1;
+    // Locked-split designs (e.g. CMB 1) hide the Split/Total toggle so the
+    // user can't accidentally give a single overall dimension and lose the
+    // per-cell breakdown that the area calc depends on.
+    final showWidthToggle = design.cols > 1 && !design.lockSplit;
+    final showHeightToggle = design.rows > 1 && !design.lockSplit;
+    // Effective mode used to pick which field(s) to render. For single
+    // row/col designs (no split possible) we always show the Total field.
+    // For locked designs we always show per-cell fields.
+    final effWidthMode = design.lockSplit
+        ? 'split'
+        : (design.cols <= 1 ? 'total' : widthMode);
+    final effHeightMode = design.lockSplit
+        ? 'split'
+        : (design.rows <= 1 ? 'total' : heightMode);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2096,7 +2201,7 @@ class _DimensionsEditor extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                   ],
-                  if (heightMode == 'total' || !showHeightToggle)
+                  if (effHeightMode == 'total')
                     _LabeledNumberField(
                       controller: totalHeightCtrl,
                       label: 'Total height (mm)',
@@ -2136,7 +2241,7 @@ class _DimensionsEditor extends StatelessWidget {
           const SizedBox(height: 8),
         ],
         // Width fields - split row OR single total field.
-        if (widthMode == 'total' || !showWidthToggle)
+        if (effWidthMode == 'total')
           _LabeledNumberField(
             controller: totalWidthCtrl,
             label: 'Total width (mm)',
