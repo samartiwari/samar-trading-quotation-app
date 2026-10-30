@@ -125,7 +125,8 @@ const List<WindowDesign> kWindowDesigns = [
   WindowDesign(
     id: 'fixed_8',
     family: 'Fixed', label: 'Fixed 8',
-    cols: 1, rows: 2, rowFractions: [0.35, 0.65],
+    // Fixed pane on the left, ventilator on the right.
+    cols: 2, rows: 1, colFractions: [0.60, 0.40],
   ),
   WindowDesign(id: 'fixed_9', family: 'Fixed', label: 'Fixed 9', cols: 1, rows: 1),
   WindowDesign(
@@ -143,50 +144,63 @@ const List<WindowDesign> kWindowDesigns = [
     family: 'Fixed', label: 'Fixed 12',
     cols: 1, rows: 2, rowFractions: [0.30, 0.70],
   ),
-  WindowDesign(id: 'fixed_13', family: 'Fixed', label: 'Fixed 13', cols: 3, rows: 1),
+  // Corner window: front pane + side pane on the adjoining wall.
+  WindowDesign(id: 'fixed_13', family: 'Fixed', label: 'Fixed 13', cols: 2, rows: 1),
   WindowDesign(id: 'fixed_14', family: 'Fixed', label: 'Fixed 14', cols: 1, rows: 1),
   WindowDesign(
     id: 'fixed_15',
     family: 'Fixed', label: 'Fixed 15',
-    cols: 3, rows: 1, colFractions: [0.32, 0.36, 0.32],
+    // Fixed glass on top, louvers below.
+    cols: 1, rows: 2, rowFractions: [0.40, 0.60],
   ),
   WindowDesign(id: 'fixed_16', family: 'Fixed', label: 'Fixed 16', cols: 2, rows: 2),
   WindowDesign(id: 'fixed_17', family: 'Fixed', label: 'Fixed 17', cols: 1, rows: 1),
   WindowDesign(
     id: 'fixed_18',
     family: 'Fixed', label: 'Fixed 18',
-    cols: 1, rows: 2, rowFractions: [0.30, 0.70],
+    // Two fixed lights on top, one merged fixed light below.
+    cols: 2, rows: 2, rowFractions: [0.30, 0.70],
   ),
-  WindowDesign(id: 'fixed_19', family: 'Fixed', label: 'Fixed 19', cols: 2, rows: 1),
-  WindowDesign(id: 'fixed_20', family: 'Fixed', label: 'Fixed 20', cols: 2, rows: 2),
+  WindowDesign(id: 'fixed_19', family: 'Fixed', label: 'Fixed 19', cols: 1, rows: 1),
+  WindowDesign(id: 'fixed_20', family: 'Fixed', label: 'Fixed 20', cols: 2, rows: 3),
   WindowDesign(id: 'fixed_21', family: 'Fixed', label: 'Fixed 21', cols: 1, rows: 3),
   WindowDesign(
     id: 'fixed_22',
     family: 'Fixed', label: 'Fixed 22',
-    cols: 1, rows: 2, rowFractions: [0.30, 0.70],
+    // Top row: louvers + ventilator; one merged fixed light below.
+    cols: 2, rows: 2, rowFractions: [0.30, 0.70],
   ),
   WindowDesign(
     id: 'fixed_23',
     family: 'Fixed', label: 'Fixed 23',
-    cols: 1, rows: 3, rowFractions: [0.25, 0.375, 0.375],
+    // Full-height fixed light on the left; ventilator over fixed on the right.
+    cols: 2, rows: 2, colFractions: [0.65, 0.35], rowFractions: [0.25, 0.75],
   ),
-  WindowDesign(id: 'fixed_24', family: 'Fixed', label: 'Fixed 24', cols: 2, rows: 1),
-  WindowDesign(id: 'fixed_25', family: 'Fixed', label: 'Fixed 25', cols: 2, rows: 2),
+  WindowDesign(
+    id: 'fixed_24',
+    family: 'Fixed', label: 'Fixed 24',
+    // Ventilator over fixed on the left; full-height louvers on the right.
+    cols: 2, rows: 2, colFractions: [0.35, 0.65], rowFractions: [0.40, 0.60],
+  ),
+  WindowDesign(
+    id: 'fixed_25',
+    family: 'Fixed', label: 'Fixed 25',
+    // Louvers on top, fixed light below.
+    cols: 1, rows: 2, rowFractions: [0.35, 0.65],
+  ),
   WindowDesign(id: 'fixed_26', family: 'Fixed', label: 'Fixed 26', cols: 1, rows: 1),
   WindowDesign(
     id: 'fixed_27',
     family: 'Fixed', label: 'Fixed 27',
-    cols: 1, rows: 2,
+    // Semicircular light over a rectangular one, split at the spring line.
+    cols: 1, rows: 2, rowFractions: [0.35, 0.65],
   ),
-  WindowDesign(id: 'fixed_28', family: 'Fixed', label: 'Fixed 28', cols: 2, rows: 3),
+  WindowDesign(id: 'fixed_28', family: 'Fixed', label: 'Fixed 28', cols: 2, rows: 4),
   WindowDesign(id: 'fixed_29', family: 'Fixed', label: 'Fixed 29', cols: 4, rows: 2),
   WindowDesign(id: 'fixed_30', family: 'Fixed', label: 'Fixed 30', cols: 1, rows: 2),
-  WindowDesign(id: 'fixed_31', family: 'Fixed', label: 'Fixed 31', cols: 1, rows: 1),
-  WindowDesign(
-    id: 'fixed_32',
-    family: 'Fixed', label: 'Fixed 32',
-    cols: 1, rows: 2, rowFractions: [0.30, 0.70],
-  ),
+  WindowDesign(id: 'fixed_31', family: 'Fixed', label: 'Fixed 31', cols: 1, rows: 4),
+  // Full louver panel.
+  WindowDesign(id: 'fixed_32', family: 'Fixed', label: 'Fixed 32', cols: 1, rows: 1),
   WindowDesign(
     id: 'fixed_33',
     family: 'Fixed', label: 'Fixed 33',
@@ -195,12 +209,14 @@ const List<WindowDesign> kWindowDesigns = [
   WindowDesign(
     id: 'fixed_34',
     family: 'Fixed', label: 'Fixed 34',
-    cols: 3, rows: 1, colFractions: [0.30, 0.40, 0.30],
+    // Louvers / fixed / louvers, equal widths.
+    cols: 3, rows: 1,
   ),
   WindowDesign(
     id: 'fixed_35',
     family: 'Fixed', label: 'Fixed 35',
-    cols: 3, rows: 1, colFractions: [0.28, 0.44, 0.28],
+    // Louvers / fixed / fixed / louvers, equal widths.
+    cols: 4, rows: 1,
   ),
   // Casement family — openable casements (the CMT series). cols/rows below
   // drive how many dimension inputs the form shows. Per-pane open direction
