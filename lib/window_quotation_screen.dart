@@ -1046,20 +1046,20 @@ class WindowQuotationItem {
 
     // For designs with a partial-cell grid (e.g. CMB 1's shorter right unit
     // leaves the bottom-right cell empty), sum only the filled cells so the
-    // empty region isn't over-counted. Fall back to totalW x totalH for
-    // regular designs.
+    // empty region isn't over-counted. Other designs use their outline:
+    // totalW x totalH, trimmed for shaped frames (arches, triangles).
     final design = designById(designId);
     double totalMm2 = 0;
+    final rh = _effectiveRowHeights(design, totalH);
     if (design.cellsFilled != null) {
       final cw = _effectiveColWidths(design, totalW);
-      final rh = _effectiveRowHeights(design, totalH);
       for (var r = 0; r < design.rows; r++) {
         for (var c = 0; c < design.cols; c++) {
           if (design.cellFilled(r, c)) totalMm2 += cw[c] * rh[r];
         }
       }
     } else {
-      totalMm2 = totalW * totalH;
+      totalMm2 = design.outlineAreaMm2(totalW, totalH, topRowH: rh.first);
     }
     areaSqft = totalMm2 / _sqmmPerSqft;
     amount = areaSqft * q * r;
@@ -1470,13 +1470,13 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
     final totalW = _totalWidth();
     final totalH = _totalHeight();
     // Designs with a partial-cell grid (e.g. CMB 1) skip empty cells so the
-    // gap under a shorter sub-unit isn't billed. Everything else uses the
-    // rectangle math.
+    // gap under a shorter sub-unit isn't billed. Everything else uses its
+    // outline: rectangle math, trimmed for shaped frames (arches, triangles).
     final design = designById(_designId);
     double totalMm2;
+    final rh = _cellHeights(design, totalH);
     if (design.cellsFilled != null) {
       final cw = _cellWidths(design, totalW);
-      final rh = _cellHeights(design, totalH);
       totalMm2 = 0;
       for (var rr = 0; rr < design.rows; rr++) {
         for (var cc = 0; cc < design.cols; cc++) {
@@ -1484,7 +1484,7 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
         }
       }
     } else {
-      totalMm2 = totalW * totalH;
+      totalMm2 = design.outlineAreaMm2(totalW, totalH, topRowH: rh.first);
     }
     setState(() {
       _areaSqft = totalMm2 / _sqmmPerSqft;

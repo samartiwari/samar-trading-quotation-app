@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/services.dart' show rootBundle;
 
 /// Window design catalog. Each design is now backed by a hand-authored static
@@ -32,6 +34,24 @@ class MeshCorner {
     required this.bottomFrac,
     this.sizeFrac = 0.18,
   });
+}
+
+/// Outline of the glazed unit. The form collects a bounding width x height;
+/// shaped outlines bill only the glass actually inside that rectangle.
+enum OutlineShape {
+  rect,
+
+  /// Semicircular (or elliptical) head on a flat sill: pi/4 * W * H.
+  halfRound,
+
+  /// Gable triangle with base W and apex height H: W * H / 2.
+  triangle,
+
+  /// Rectangle under a semicircular head of radius W/2 (round-top arch).
+  roundTop,
+
+  /// Rectangle whose first row is a right-triangle light (sloped head).
+  slopedTop,
 }
 
 /// A selectable window design (one catalog entry, e.g. "Fixed 3").
@@ -69,6 +89,10 @@ class WindowDesign {
   /// across cells and break the area calc.
   final bool lockSplit;
 
+  /// Outline used to turn width x height into glazed area (see
+  /// [outlineAreaMm2]). Rectangular unless the frame itself is shaped.
+  final OutlineShape outline;
+
   const WindowDesign({
     required this.id,
     required this.family,
@@ -80,7 +104,26 @@ class WindowDesign {
     this.meshCorner,
     this.cellsFilled,
     this.lockSplit = false,
+    this.outline = OutlineShape.rect,
   });
+
+  /// Glazed area in mm² for a bounding width [w] x height [h]. [topRowH] is
+  /// the first row's height, which is the triangle height of a sloped head.
+  double outlineAreaMm2(double w, double h, {double topRowH = 0}) {
+    switch (outline) {
+      case OutlineShape.rect:
+        return w * h;
+      case OutlineShape.halfRound:
+        return math.pi / 4 * w * h;
+      case OutlineShape.triangle:
+        return w * h / 2;
+      case OutlineShape.roundTop:
+        // The head is a W x W/2 box holding a half-disc; trim its corners.
+        return w * h - (1 - math.pi / 4) * w * math.min(w / 2, h);
+      case OutlineShape.slopedTop:
+        return w * (h - math.min(topRowH, h) / 2);
+    }
+  }
 
   /// True if the given (row, col) cell contributes to the item's area. Cells
   /// outside the declared grid, or explicitly false in `cellsFilled`, are
@@ -146,7 +189,10 @@ const List<WindowDesign> kWindowDesigns = [
   ),
   // Corner window: front pane + side pane on the adjoining wall.
   WindowDesign(id: 'fixed_13', family: 'Fixed', label: 'Fixed 13', cols: 2, rows: 1),
-  WindowDesign(id: 'fixed_14', family: 'Fixed', label: 'Fixed 14', cols: 1, rows: 1),
+  WindowDesign(
+    id: 'fixed_14', family: 'Fixed', label: 'Fixed 14', cols: 1, rows: 1,
+    outline: OutlineShape.halfRound,
+  ),
   WindowDesign(
     id: 'fixed_15',
     family: 'Fixed', label: 'Fixed 15',
@@ -161,7 +207,10 @@ const List<WindowDesign> kWindowDesigns = [
     // Two fixed lights on top, one merged fixed light below.
     cols: 2, rows: 2, rowFractions: [0.30, 0.70],
   ),
-  WindowDesign(id: 'fixed_19', family: 'Fixed', label: 'Fixed 19', cols: 1, rows: 1),
+  WindowDesign(
+    id: 'fixed_19', family: 'Fixed', label: 'Fixed 19', cols: 1, rows: 1,
+    outline: OutlineShape.triangle,
+  ),
   WindowDesign(id: 'fixed_20', family: 'Fixed', label: 'Fixed 20', cols: 2, rows: 3),
   WindowDesign(id: 'fixed_21', family: 'Fixed', label: 'Fixed 21', cols: 1, rows: 3),
   WindowDesign(
@@ -188,12 +237,16 @@ const List<WindowDesign> kWindowDesigns = [
     // Louvers on top, fixed light below.
     cols: 1, rows: 2, rowFractions: [0.35, 0.65],
   ),
-  WindowDesign(id: 'fixed_26', family: 'Fixed', label: 'Fixed 26', cols: 1, rows: 1),
+  WindowDesign(
+    id: 'fixed_26', family: 'Fixed', label: 'Fixed 26', cols: 1, rows: 1,
+    outline: OutlineShape.roundTop,
+  ),
   WindowDesign(
     id: 'fixed_27',
     family: 'Fixed', label: 'Fixed 27',
     // Semicircular light over a rectangular one, split at the spring line.
     cols: 1, rows: 2, rowFractions: [0.35, 0.65],
+    outline: OutlineShape.roundTop,
   ),
   WindowDesign(id: 'fixed_28', family: 'Fixed', label: 'Fixed 28', cols: 2, rows: 4),
   WindowDesign(id: 'fixed_29', family: 'Fixed', label: 'Fixed 29', cols: 4, rows: 2),
