@@ -1664,6 +1664,7 @@ class PdfGenerator {
                             if (item.windowSeries == 'Casement' ||
                                 item.windowSeries == 'Casement (Georgian Bar)' ||
                                 item.windowSeries == 'Door' ||
+                                item.windowSeries == 'Sliding Folding' ||
                                 item.windowSeries == 'DW' ||
                                 item.windowSeries == 'Combination') ...[
                               _descRow('Locking', item.locking),

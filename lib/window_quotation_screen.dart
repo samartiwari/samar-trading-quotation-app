@@ -1362,7 +1362,8 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
     // Auto-align item type with families that have a natural mapping. Keep
     // the user's existing choice for regular window families (Fixed, Casement,
     // Sliding etc.) so they can still flip Window <-> Door manually.
-    if (newDesign.family == 'Door') {
+    if (newDesign.family == 'Door' ||
+        newDesign.family == 'Sliding Folding') {
       _itemType = 'Door';
     } else if (newDesign.family == 'Combination' ||
         newDesign.family == 'DW') {
@@ -1832,6 +1833,7 @@ class _WindowItemDialogState extends State<_WindowItemDialog> {
                     if (designById(_designId).family == 'Casement' ||
                         designById(_designId).family == 'Casement (Georgian Bar)' ||
                         designById(_designId).family == 'Door' ||
+                        designById(_designId).family == 'Sliding Folding' ||
                         designById(_designId).family == 'DW' ||
                         designById(_designId).family == 'Combination') ...[
                       _sectionLabel("Casement Options"),

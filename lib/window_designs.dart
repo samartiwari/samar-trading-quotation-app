@@ -381,6 +381,13 @@ const List<WindowDesign> kWindowDesigns = [
     id: 'door_6', family: 'Door', label: 'Door 6',
     cols: 2, rows: 2, rowFractions: [0.18, 0.82],
   ),
+  // Sliding Folding family - bi-fold doors (SFD series). Panels fold and
+  // stack towards the arrow; the last panel carries the handle.
+  WindowDesign(id: 'sfd_1', family: 'Sliding Folding', label: 'SFD 1', cols: 3, rows: 1),
+  WindowDesign(id: 'sfd_2', family: 'Sliding Folding', label: 'SFD 2', cols: 4, rows: 1),
+  WindowDesign(id: 'sfd_3', family: 'Sliding Folding', label: 'SFD 3', cols: 5, rows: 1),
+  WindowDesign(id: 'sfd_4', family: 'Sliding Folding', label: 'SFD 4', cols: 6, rows: 1),
+  WindowDesign(id: 'sfd_5', family: 'Sliding Folding', label: 'SFD 5', cols: 2, rows: 1),
 
   // DW family - Door+Window combinations (casement door + sliding/fixed window
   // in a single frame). Show BOTH casement + sliding option sections.
