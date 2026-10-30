@@ -367,8 +367,8 @@ const List<WindowDesign> kWindowDesigns = [
   ),
   WindowDesign(
     id: 'door_3', family: 'Door', label: 'Door 3',
-    // Fixed sidelight (left, narrower) + casement door leaf (right, wider).
-    cols: 2, rows: 1, colFractions: [0.4, 0.6],
+    // Fixed sidelight (left) + casement door leaf (right), equal widths.
+    cols: 2, rows: 1,
   ),
   WindowDesign(
     id: 'door_4', family: 'Door', label: 'Door 4',
@@ -381,6 +381,16 @@ const List<WindowDesign> kWindowDesigns = [
     id: 'door_6', family: 'Door', label: 'Door 6',
     cols: 2, rows: 2, rowFractions: [0.18, 0.82],
   ),
+  // Door 7-13: single/double leaves whose sash carries sub-panels (mid-rail,
+  // solid panel, louvers). The panels are inside the leaf, so one cell each.
+  WindowDesign(id: 'door_7', family: 'Door', label: 'Door 7', cols: 1, rows: 1),
+  WindowDesign(id: 'door_8', family: 'Door', label: 'Door 8', cols: 1, rows: 1),
+  WindowDesign(id: 'door_9', family: 'Door', label: 'Door 9', cols: 2, rows: 1),
+  WindowDesign(id: 'door_10', family: 'Door', label: 'Door 10', cols: 2, rows: 1),
+  WindowDesign(id: 'door_11', family: 'Door', label: 'Door 11', cols: 1, rows: 1),
+  WindowDesign(id: 'door_12', family: 'Door', label: 'Door 12', cols: 1, rows: 1),
+  WindowDesign(id: 'door_13', family: 'Door', label: 'Door 13', cols: 1, rows: 1),
+
   // Sliding Folding family - bi-fold doors (SFD series). Panels fold and
   // stack towards the arrow; the last panel carries the handle.
   WindowDesign(id: 'sfd_1', family: 'Sliding Folding', label: 'SFD 1', cols: 3, rows: 1),
